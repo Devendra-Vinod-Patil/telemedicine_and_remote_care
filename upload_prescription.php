@@ -2,13 +2,17 @@
 session_start();
 include 'database.php';
 
+function redirect_upload_error($code = 'error') {
+    header("Location: doctors_dashboard.php?upload=" . urlencode($code));
+    exit();
+}
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
     die("Unauthorized access");
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['appointment_id'])) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('invalid_request');
 }
 
 $doctor_id = $_SESSION['user_id'];
@@ -21,19 +25,16 @@ $diagnosis = trim($_POST['diagnosis'] ?? '');
 $note_advice = trim($_POST['note_advice'] ?? '');
 
 if ($patient_name === '' || $diagnosis === '') {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('validation_error');
 }
 
 if ($age !== null && ($age < 0 || $age > 130)) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('validation_error');
 }
 
 $allowed_genders = ['male', 'female', 'other', ''];
 if (!in_array($gender, $allowed_genders, true)) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('validation_error');
 }
 
 $medicine_names = $_POST['medicine_name'] ?? [];
@@ -53,8 +54,7 @@ for ($i = 0; $i < $max_count; $i++) {
     }
 
     if ($name === '' || $dose === '' || $duration === '') {
-        header("Location: doctors_dashboard.php?upload=error");
-        exit();
+        redirect_upload_error('validation_error');
     }
 
     $medicines[] = [
@@ -65,8 +65,7 @@ for ($i = 0; $i < $max_count; $i++) {
 }
 
 if (empty($medicines)) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('validation_error');
 }
 
 $payload = [
@@ -82,8 +81,7 @@ $payload = [
 
 $prescription_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
 if ($prescription_data === false) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('encoding_error');
 }
 
 $stmt = $conn->prepare(
@@ -93,8 +91,7 @@ $stmt = $conn->prepare(
 );
 
 if (!$stmt) {
-    header("Location: doctors_dashboard.php?upload=error");
-    exit();
+    redirect_upload_error('db_error');
 }
 
 $stmt->bind_param("sii", $prescription_data, $appointment_id, $doctor_id);

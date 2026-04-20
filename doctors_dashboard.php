@@ -392,15 +392,15 @@ $(document).on('click', '.add-medicine-row', function(){
             <div class="row g-2 align-items-end">
                 <div class="col-md-4 col-12">
                     <label class="form-label mb-1 small">Name</label>
-                    <input list="${datalistId}" name="medicine_name[]" class="form-control form-control-sm">
+                    <input list="${datalistId}" name="medicine_name[]" class="form-control form-control-sm" required>
                 </div>
                 <div class="col-md-4 col-6">
                     <label class="form-label mb-1 small">Dose</label>
-                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet">
+                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
                 </div>
                 <div class="col-md-3 col-6">
                     <label class="form-label mb-1 small">Duration</label>
-                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days">
+                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
                 </div>
                 <div class="col-md-1 col-12">
                     <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-medicine-row">×</button>

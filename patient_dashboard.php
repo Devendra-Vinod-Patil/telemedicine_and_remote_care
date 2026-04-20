@@ -94,7 +94,7 @@ function parse_digital_prescription($prescription_raw) {
     }
 
     $decoded = json_decode($prescription_raw, true);
-    if (!is_array($decoded) || empty($decoded['diagnosis'])) {
+    if (!is_array($decoded) || !isset($decoded['diagnosis']) || trim((string)$decoded['diagnosis']) === '') {
         return null;
     }
 
