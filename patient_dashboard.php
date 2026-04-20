@@ -106,7 +106,11 @@ function is_file_prescription($prescription_raw) {
         return false;
     }
 
-    return strpos($prescription_raw, 'uploads/') === 0;
+    if (!preg_match('#^uploads/prescriptions/[a-zA-Z0-9._-]+$#', $prescription_raw)) {
+        return false;
+    }
+
+    return file_exists(__DIR__ . '/' . $prescription_raw);
 }
 ?>
 

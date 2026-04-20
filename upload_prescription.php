@@ -41,8 +41,19 @@ $medicine_names = $_POST['medicine_name'] ?? [];
 $medicine_doses = $_POST['medicine_dose'] ?? [];
 $medicine_durations = $_POST['medicine_duration'] ?? [];
 
+if (!is_array($medicine_names) || !is_array($medicine_doses) || !is_array($medicine_durations)) {
+    redirect_upload_error('validation_error');
+}
+
+$names_count = count($medicine_names);
+$doses_count = count($medicine_doses);
+$durations_count = count($medicine_durations);
+if ($names_count !== $doses_count || $doses_count !== $durations_count) {
+    redirect_upload_error('validation_error');
+}
+
 $medicines = [];
-$max_count = max(count($medicine_names), count($medicine_doses), count($medicine_durations));
+$max_count = $names_count;
 
 for ($i = 0; $i < $max_count; $i++) {
     $name = trim($medicine_names[$i] ?? '');
@@ -79,8 +90,9 @@ $payload = [
     'created_at' => date('c')
 ];
 
-$prescription_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
-if ($prescription_data === false) {
+try {
+    $prescription_data = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+} catch (Throwable $e) {
     redirect_upload_error('encoding_error');
 }
 
