@@ -1,36 +1,51 @@
-<!-- Footer -->
-<footer class="bg-black text-gray-400 relative">
+<footer class="mt-5 pt-5 pb-4" style="background: linear-gradient(135deg, #0f172a, #1e293b); color:#cbd5e1;">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <h5 class="text-white fw-bold mb-3">
+          <i class="fas fa-heartbeat me-2 text-info"></i>TeleMedCare
+        </h5>
+        <p class="mb-3">Modern, secure, and convenient virtual care for patients and doctors.</p>
+        <div class="d-flex gap-2">
+          <a href="#" class="btn btn-sm btn-outline-light rounded-circle"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" class="btn btn-sm btn-outline-light rounded-circle"><i class="fab fa-twitter"></i></a>
+          <a href="#" class="btn btn-sm btn-outline-light rounded-circle"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#" class="btn btn-sm btn-outline-light rounded-circle"><i class="fab fa-instagram"></i></a>
+        </div>
+      </div>
 
-  <!-- Subtle Top Border -->
-  <div class="w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+      <div class="col-6 col-lg-2">
+        <h6 class="text-white fw-semibold mb-3">Platform</h6>
+        <ul class="list-unstyled small">
+          <li class="mb-2"><a href="index.php" class="text-decoration-none text-light-emphasis">Home</a></li>
+          <li class="mb-2"><a href="doctors.php" class="text-decoration-none text-light-emphasis">Find Doctors</a></li>
+          <li class="mb-2"><a href="about.php" class="text-decoration-none text-light-emphasis">About</a></li>
+          <li><a href="contact.php" class="text-decoration-none text-light-emphasis">Contact</a></li>
+        </ul>
+      </div>
 
-  <div class="container mx-auto px-4 py-12">
+      <div class="col-6 col-lg-3">
+        <h6 class="text-white fw-semibold mb-3">For Users</h6>
+        <ul class="list-unstyled small">
+          <li class="mb-2"><a href="login.php" class="text-decoration-none text-light-emphasis">Login</a></li>
+          <li class="mb-2"><a href="registration.html" class="text-decoration-none text-light-emphasis">Create Account</a></li>
+          <li class="mb-2"><span class="text-light-emphasis">Video Consultations</span></li>
+          <li><span class="text-light-emphasis">Appointment Tracking</span></li>
+        </ul>
+      </div>
 
-    <!-- Main Footer Content -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 text-sm">
-
-     
-
-   
-
+      <div class="col-lg-3">
+        <h6 class="text-white fw-semibold mb-3">Support</h6>
+        <p class="small mb-1"><i class="fas fa-envelope me-2 text-info"></i>support@telemedcare.com</p>
+        <p class="small mb-1"><i class="fas fa-phone me-2 text-info"></i>+1 (555) 123-4567</p>
+        <p class="small mb-0"><i class="fas fa-clock me-2 text-info"></i>24/7 Virtual Assistance</p>
+      </div>
     </div>
 
-    <!-- Divider -->
-    <div class="my-10 h-px bg-gray-800"></div>
-
-    <!-- Bottom Row -->
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500 text-center md:text-left">
-
-      <p>
-        © 2023 <span class="text-white font-semibold">TeleMedCare</span>.
-        All rights reserved.
-      </p>
-
-      <p class="tracking-wide">
-        Built with ❤️ for better healthcare
-      </p>
-
+    <hr class="my-4 border-secondary-subtle">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small">
+      <p class="mb-0">© 2026 <span class="text-white fw-semibold">TeleMedCare</span>. All rights reserved.</p>
+      <p class="mb-0">Built with ❤️ for better healthcare.</p>
     </div>
-
   </div>
 </footer>
