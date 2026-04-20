@@ -76,7 +76,7 @@ $doctors = $conn->query(
 $stmt = $conn->prepare(
     "SELECT a.id, a.appointment_date, a.appointment_time,
             a.status, a.prescription, a.room_id,
-            d.full_name AS doctor_name, d.specialization
+            d.full_name AS doctor_name, d.specialization, d.photo AS doctor_photo
      FROM appointments a
      JOIN doctors d ON a.doctor_id = d.id
      WHERE a.patient_id = ?
@@ -239,6 +239,7 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
         <?php if ($row['status'] === 'completed' && !empty($row['prescription'])): ?>
             <?php $digital_rx = parse_digital_prescription($row['prescription']); ?>
             <?php if ($digital_rx): ?>
+                <?php $rx_payload = base64_encode(json_encode($digital_rx, JSON_UNESCAPED_UNICODE)); ?>
                 <details class="rx-details small">
                     <summary>View Digital Prescription</summary>
                     <div class="mt-2">
@@ -265,6 +266,14 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
                         <?php if (!empty($digital_rx['note_advice'])): ?>
                             <div><strong>Note & Advice:</strong> <?= htmlspecialchars($digital_rx['note_advice']) ?></div>
                         <?php endif; ?>
+                        <button type="button"
+                                class="btn btn-success btn-sm mt-2 download-rx-pdf"
+                                data-rx="<?= htmlspecialchars($rx_payload, ENT_QUOTES, 'UTF-8') ?>"
+                                data-doctor-name="<?= htmlspecialchars($row['doctor_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-doctor-photo="<?= htmlspecialchars((string)($row['doctor_photo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                data-appointment-date="<?= htmlspecialchars(date("d M Y", strtotime($row['appointment_date'])), ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </button>
                     </div>
                 </details>
             <?php elseif (is_file_prescription($row['prescription'])): ?>
@@ -331,6 +340,7 @@ while($row = $appointments->fetch_assoc()):
     <?php if ($row['status'] === 'completed' && !empty($row['prescription'])): ?>
         <?php $digital_rx = parse_digital_prescription($row['prescription']); ?>
         <?php if ($digital_rx): ?>
+            <?php $rx_payload = base64_encode(json_encode($digital_rx, JSON_UNESCAPED_UNICODE)); ?>
             <details class="rx-details small">
                 <summary>View Digital Prescription</summary>
                 <div class="mt-2">
@@ -357,6 +367,14 @@ while($row = $appointments->fetch_assoc()):
                     <?php if (!empty($digital_rx['note_advice'])): ?>
                         <div><strong>Note & Advice:</strong> <?= htmlspecialchars($digital_rx['note_advice']) ?></div>
                     <?php endif; ?>
+                    <button type="button"
+                            class="btn btn-success btn-sm mt-2 w-100 download-rx-pdf"
+                            data-rx="<?= htmlspecialchars($rx_payload, ENT_QUOTES, 'UTF-8') ?>"
+                            data-doctor-name="<?= htmlspecialchars($row['doctor_name'], ENT_QUOTES, 'UTF-8') ?>"
+                            data-doctor-photo="<?= htmlspecialchars((string)($row['doctor_photo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                            data-appointment-date="<?= htmlspecialchars(date("d M Y", strtotime($row['appointment_date'])), ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
                 </div>
             </details>
         <?php elseif (is_file_prescription($row['prescription'])): ?>
@@ -394,6 +412,141 @@ while($row = $appointments->fetch_assoc()):
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toAbsoluteImageUrl(path) {
+    if (!path) return '';
+    if (/^https?:\/\//i.test(path) || path.startsWith('data:')) return path;
+    return window.location.origin + '/' + path.replace(/^\/+/, '');
+}
+
+function loadImageAsDataUrl(src) {
+    return new Promise((resolve, reject) => {
+        if (!src) {
+            reject(new Error('No source'));
+            return;
+        }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+function safeValue(value) {
+    return String(value || '').trim();
+}
+
+async function downloadPrescriptionPdf(button) {
+    const jspdfNs = window.jspdf;
+    if (!jspdfNs || !jspdfNs.jsPDF) {
+        alert('PDF generator unavailable. Please try again.');
+        return;
+    }
+
+    let rx;
+    try {
+        rx = JSON.parse(atob(button.dataset.rx || ''));
+    } catch (e) {
+        alert('Invalid prescription data.');
+        return;
+    }
+
+    const doctorName = safeValue(button.dataset.doctorName) || 'Doctor';
+    const appointmentDate = safeValue(button.dataset.appointmentDate);
+    const doctorPhotoPath = safeValue(button.dataset.doctorPhoto);
+
+    const { jsPDF } = jspdfNs;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    let y = 18;
+    doc.setFontSize(18);
+    doc.setTextColor(34, 40, 49);
+    doc.text('TeleMedCare', 14, y);
+
+    y += 8;
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Digital Prescription', 14, y);
+
+    y += 7;
+    doc.text('Doctor: ' + doctorName, 14, y);
+    y += 6;
+    if (appointmentDate) {
+        doc.text('Appointment Date: ' + appointmentDate, 14, y);
+        y += 6;
+    }
+
+    try {
+        const absolutePhoto = toAbsoluteImageUrl(doctorPhotoPath);
+        if (absolutePhoto) {
+            const imgData = await loadImageAsDataUrl(absolutePhoto);
+            doc.addImage(imgData, 'JPEG', 160, 12, 35, 35);
+        }
+    } catch (e) {
+        // continue without image
+    }
+
+    y += 2;
+    doc.setLineWidth(0.4);
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.text('Patient Name: ' + safeValue(rx.patient_name), 14, y); y += 6;
+    if (safeValue(rx.age)) { doc.text('Age: ' + safeValue(rx.age), 14, y); y += 6; }
+    if (safeValue(rx.gender)) { doc.text('Gender: ' + safeValue(rx.gender), 14, y); y += 6; }
+    doc.text('Diagnosis: ' + safeValue(rx.diagnosis), 14, y); y += 8;
+
+    doc.setFont(undefined, 'bold');
+    doc.text('Medicines:', 14, y);
+    doc.setFont(undefined, 'normal');
+    y += 6;
+
+    const medicines = Array.isArray(rx.medicines) ? rx.medicines : [];
+    if (medicines.length === 0) {
+        doc.text('- N/A', 18, y);
+        y += 6;
+    } else {
+        medicines.forEach((m, idx) => {
+            const line = `${idx + 1}. ${safeValue(m.name)} | Dose: ${safeValue(m.dose)} | Duration: ${safeValue(m.duration)}`;
+            const wrapped = doc.splitTextToSize(line, 176);
+            doc.text(wrapped, 18, y);
+            y += (wrapped.length * 5);
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+    }
+
+    if (safeValue(rx.note_advice)) {
+        y += 3;
+        doc.setFont(undefined, 'bold');
+        doc.text('Note & Advice:', 14, y);
+        doc.setFont(undefined, 'normal');
+        y += 6;
+        const adviceLines = doc.splitTextToSize(safeValue(rx.note_advice), 176);
+        doc.text(adviceLines, 14, y);
+    }
+
+    doc.save('prescription_' + Date.now() + '.pdf');
+}
+
+document.addEventListener('click', function(event) {
+    const button = event.target.closest('.download-rx-pdf');
+    if (!button) return;
+    downloadPrescriptionPdf(button);
+});
+</script>
 </body>
 </html>
