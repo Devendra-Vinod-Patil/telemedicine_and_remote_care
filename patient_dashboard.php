@@ -87,6 +87,27 @@ $stmt->bind_param("i", $patient_id);
 $stmt->execute();
 $appointments = $stmt->get_result();
 $stmt->close();
+
+function parse_digital_prescription($prescription_raw) {
+    if (!is_string($prescription_raw) || trim($prescription_raw) === '') {
+        return null;
+    }
+
+    $decoded = json_decode($prescription_raw, true);
+    if (!is_array($decoded) || empty($decoded['diagnosis'])) {
+        return null;
+    }
+
+    return $decoded;
+}
+
+function is_file_prescription($prescription_raw) {
+    if (!is_string($prescription_raw)) {
+        return false;
+    }
+
+    return strpos($prescription_raw, 'uploads/') === 0;
+}
 ?>
 
 <!DOCTYPE html>
@@ -107,6 +128,8 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
 .status-badge.confirmed { background:#d1ecf1; color:#0c5460; }
 .status-badge.completed { background:#d4edda; color:#155724; }
 .status-badge.cancelled { background:#f8d7da; color:#721c24; }
+.rx-details summary { cursor:pointer; color:#0d6efd; }
+.rx-details ul { padding-left:18px; }
 </style>
 </head>
 
@@ -210,9 +233,43 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
     <!-- PRESCRIPTION -->
     <td>
         <?php if ($row['status'] === 'completed' && !empty($row['prescription'])): ?>
-            <a href="<?= htmlspecialchars($row['prescription']) ?>" download class="btn btn-success btn-sm">
-                <i class="fas fa-download"></i> Download
-            </a>
+            <?php $digital_rx = parse_digital_prescription($row['prescription']); ?>
+            <?php if ($digital_rx): ?>
+                <details class="rx-details small">
+                    <summary>View Digital Prescription</summary>
+                    <div class="mt-2">
+                        <div><strong>Patient:</strong> <?= htmlspecialchars($digital_rx['patient_name'] ?? $patient['full_name']) ?></div>
+                        <?php if (!empty($digital_rx['age'])): ?>
+                            <div><strong>Age:</strong> <?= htmlspecialchars((string)$digital_rx['age']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($digital_rx['gender'])): ?>
+                            <div><strong>Gender:</strong> <?= htmlspecialchars(ucfirst($digital_rx['gender'])) ?></div>
+                        <?php endif; ?>
+                        <div><strong>Diagnosis:</strong> <?= htmlspecialchars($digital_rx['diagnosis']) ?></div>
+                        <?php if (!empty($digital_rx['medicines']) && is_array($digital_rx['medicines'])): ?>
+                            <div><strong>Medicines:</strong></div>
+                            <ul class="mb-1">
+                                <?php foreach ($digital_rx['medicines'] as $medicine): ?>
+                                    <li>
+                                        <?= htmlspecialchars($medicine['name'] ?? '') ?>
+                                        <?php if (!empty($medicine['dose'])): ?> — <?= htmlspecialchars($medicine['dose']) ?><?php endif; ?>
+                                        <?php if (!empty($medicine['duration'])): ?> (<?= htmlspecialchars($medicine['duration']) ?>)<?php endif; ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                        <?php if (!empty($digital_rx['note_advice'])): ?>
+                            <div><strong>Note & Advice:</strong> <?= htmlspecialchars($digital_rx['note_advice']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                </details>
+            <?php elseif (is_file_prescription($row['prescription'])): ?>
+                <a href="<?= htmlspecialchars($row['prescription']) ?>" download class="btn btn-success btn-sm">
+                    <i class="fas fa-download"></i> Download
+                </a>
+            <?php else: ?>
+                <span class="text-muted small">Prescription available</span>
+            <?php endif; ?>
         <?php elseif ($row['status'] === 'completed'): ?>
             <span class="text-muted small">Not uploaded</span>
         <?php else: ?>
@@ -268,11 +325,47 @@ while($row = $appointments->fetch_assoc()):
 
     <!-- PRESCRIPTION -->
     <?php if ($row['status'] === 'completed' && !empty($row['prescription'])): ?>
-        <a href="<?= htmlspecialchars($row['prescription']) ?>" 
-           download 
-           class="btn btn-success btn-sm w-100">
-            <i class="fas fa-download"></i> Download Prescription
-        </a>
+        <?php $digital_rx = parse_digital_prescription($row['prescription']); ?>
+        <?php if ($digital_rx): ?>
+            <details class="rx-details small">
+                <summary>View Digital Prescription</summary>
+                <div class="mt-2">
+                    <div><strong>Patient:</strong> <?= htmlspecialchars($digital_rx['patient_name'] ?? $patient['full_name']) ?></div>
+                    <?php if (!empty($digital_rx['age'])): ?>
+                        <div><strong>Age:</strong> <?= htmlspecialchars((string)$digital_rx['age']) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($digital_rx['gender'])): ?>
+                        <div><strong>Gender:</strong> <?= htmlspecialchars(ucfirst($digital_rx['gender'])) ?></div>
+                    <?php endif; ?>
+                    <div><strong>Diagnosis:</strong> <?= htmlspecialchars($digital_rx['diagnosis']) ?></div>
+                    <?php if (!empty($digital_rx['medicines']) && is_array($digital_rx['medicines'])): ?>
+                        <div><strong>Medicines:</strong></div>
+                        <ul class="mb-1">
+                            <?php foreach ($digital_rx['medicines'] as $medicine): ?>
+                                <li>
+                                    <?= htmlspecialchars($medicine['name'] ?? '') ?>
+                                    <?php if (!empty($medicine['dose'])): ?> — <?= htmlspecialchars($medicine['dose']) ?><?php endif; ?>
+                                    <?php if (!empty($medicine['duration'])): ?> (<?= htmlspecialchars($medicine['duration']) ?>)<?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                    <?php if (!empty($digital_rx['note_advice'])): ?>
+                        <div><strong>Note & Advice:</strong> <?= htmlspecialchars($digital_rx['note_advice']) ?></div>
+                    <?php endif; ?>
+                </div>
+            </details>
+        <?php elseif (is_file_prescription($row['prescription'])): ?>
+            <a href="<?= htmlspecialchars($row['prescription']) ?>" 
+               download 
+               class="btn btn-success btn-sm w-100">
+                <i class="fas fa-download"></i> Download Prescription
+            </a>
+        <?php else: ?>
+            <div class="text-muted small text-center">
+                Prescription available
+            </div>
+        <?php endif; ?>
     <?php elseif ($row['status'] === 'completed'): ?>
         <div class="text-muted small text-center">
             Prescription not uploaded
