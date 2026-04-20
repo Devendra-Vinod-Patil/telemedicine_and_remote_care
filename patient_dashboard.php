@@ -497,7 +497,7 @@ async function downloadPrescriptionPdf(button) {
     let y = 18;
     doc.setFontSize(18);
     doc.setTextColor(34, 40, 49);
-    const companyName = safeValue(document.body.dataset.companyName) || 'Company';
+    const companyName = safeValue(document.body.dataset.companyName) || 'TeleMedCare';
     doc.text(companyName, 14, y);
 
     y += 8;
