@@ -106,11 +106,18 @@ function is_file_prescription($prescription_raw) {
         return false;
     }
 
-    if (!preg_match('#^uploads/prescriptions/[a-zA-Z0-9._-]+$#', $prescription_raw)) {
+    if (!preg_match('#^uploads/prescriptions/[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$#', $prescription_raw)) {
         return false;
     }
 
-    return file_exists(__DIR__ . '/' . $prescription_raw);
+    $base_dir = realpath(__DIR__ . '/uploads/prescriptions');
+    $target_path = realpath(__DIR__ . '/' . $prescription_raw);
+
+    if (!$base_dir || !$target_path) {
+        return false;
+    }
+
+    return strpos($target_path, $base_dir . DIRECTORY_SEPARATOR) === 0 && file_exists($target_path);
 }
 ?>
 
@@ -137,7 +144,7 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
 </style>
 </head>
 
-<body>
+<body data-company-name="TeleMedCare">
 
 <div class="container py-5">
 
@@ -471,7 +478,8 @@ async function downloadPrescriptionPdf(button) {
     let y = 18;
     doc.setFontSize(18);
     doc.setTextColor(34, 40, 49);
-    doc.text('TeleMedCare', 14, y);
+    const companyName = safeValue(document.body.dataset.companyName) || 'TeleMedCare';
+    doc.text(companyName, 14, y);
 
     y += 8;
     doc.setFontSize(11);
