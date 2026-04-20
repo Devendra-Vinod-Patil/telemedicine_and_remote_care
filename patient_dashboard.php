@@ -10,6 +10,7 @@ include 'database.php';
 include 'header.php';
 
 $patient_id = $_SESSION['user_id'];
+$company_name = 'TeleMedCare';
 
 /* ===============================
    FETCH PATIENT PROFILE
@@ -106,7 +107,16 @@ function is_file_prescription($prescription_raw) {
         return false;
     }
 
+    if (strpos($prescription_raw, '..') !== false) {
+        return false;
+    }
+
     if (!preg_match('#^uploads/prescriptions/[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$#', $prescription_raw)) {
+        return false;
+    }
+
+    $extension = strtolower(pathinfo($prescription_raw, PATHINFO_EXTENSION));
+    if (!in_array($extension, ['pdf', 'jpg', 'jpeg', 'png'], true)) {
         return false;
     }
 
@@ -144,7 +154,7 @@ body { background:#f5f2eb; font-family: 'Lato', sans-serif; }
 </style>
 </head>
 
-<body data-company-name="TeleMedCare">
+<body data-company-name="<?= htmlspecialchars($company_name, ENT_QUOTES, 'UTF-8') ?>">
 
 <div class="container py-5">
 
@@ -424,7 +434,16 @@ while($row = $appointments->fetch_assoc()):
 <script>
 function toAbsoluteImageUrl(path) {
     if (!path) return '';
-    if (/^https?:\/\//i.test(path) || path.startsWith('data:')) return path;
+    if (path.startsWith('data:')) return path;
+    if (/^https?:\/\//i.test(path)) {
+        try {
+            const url = new URL(path);
+            if (url.origin !== window.location.origin) return '';
+            return url.href;
+        } catch (e) {
+            return '';
+        }
+    }
     return window.location.origin + '/' + path.replace(/^\/+/, '');
 }
 
@@ -478,7 +497,7 @@ async function downloadPrescriptionPdf(button) {
     let y = 18;
     doc.setFontSize(18);
     doc.setTextColor(34, 40, 49);
-    const companyName = safeValue(document.body.dataset.companyName) || 'TeleMedCare';
+    const companyName = safeValue(document.body.dataset.companyName) || 'Company';
     doc.text(companyName, 14, y);
 
     y += 8;
