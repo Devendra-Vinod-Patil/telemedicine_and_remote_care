@@ -2,6 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+$current_page = basename($_SERVER['PHP_SELF'] ?? '');
 ?>
 
 <!DOCTYPE html>
@@ -45,16 +46,36 @@ if (session_status() === PHP_SESSION_NONE) {
         .text-muted-teal { color: var(--primary-dark) !important; }
 
         .navbar {
-            background: linear-gradient(90deg, rgba(30, 58, 138, 0.95), rgba(29, 78, 216, 0.95)) !important;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+            background: linear-gradient(100deg, #1f3fa8 0%, #2d5bda 50%, #2f6fff 100%) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.24);
+            border-bottom: 1px solid rgba(255,255,255,0.14);
         }
 
         .navbar-brand {
-            font-weight: 700;
+            font-weight: 800;
             color: #fff !important;
-            font-size: 1.4rem;
-            letter-spacing: .2px;
+            font-size: 2rem;
+            letter-spacing: .3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo-wrap {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.15);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+        }
+
+        .brand-logo-wrap svg {
+            width: 22px;
+            height: 22px;
         }
 
         .navbar-toggler {
@@ -65,15 +86,21 @@ if (session_status() === PHP_SESSION_NONE) {
             color: rgba(255,255,255,0.88) !important;
             font-weight: 600;
             margin: 0 4px;
-            border-radius: 10px;
-            padding: 8px 14px !important;
-            transition: transform .25s ease, background-color .25s ease;
+            border-radius: 12px;
+            padding: 9px 14px !important;
+            transition: transform .25s ease, background-color .25s ease, color .25s ease;
         }
 
         .navbar-nav .nav-link:hover {
             color: #fff !important;
             background: rgba(255,255,255,0.15);
             transform: translateY(-1px);
+        }
+
+        .navbar-nav .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            color: #fff !important;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
         }
 
         .btn-primary,
@@ -229,10 +256,10 @@ if (session_status() === PHP_SESSION_NONE) {
 
         .user-welcome {
             color: #fff !important;
-            font-weight: 600;
+            font-weight: 700;
             margin-right: 12px;
-            background: rgba(255,255,255,0.12);
-            padding: 6px 12px;
+            background: rgba(255,255,255,0.16);
+            padding: 7px 14px;
             border-radius: 999px;
         }
 
@@ -299,7 +326,13 @@ if (session_status() === PHP_SESSION_NONE) {
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <i class="fas fa-heartbeat me-2"></i>Virtual-Chikitsa
+                <span class="brand-logo-wrap" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 20s-6.5-4.35-9.07-8.09C1.1 9.18 2.3 5.5 5.5 4.69c2-.5 3.77.23 5 1.64 1.23-1.41 3-2.14 5-1.64 3.2.81 4.4 4.49 2.57 7.22C18.5 15.65 12 20 12 20Z" fill="white"/>
+                        <path d="M6 12h2.7l1.5-2.2L12 14l1.35-2H18" stroke="#1f3fa8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                <span>Virtual-Chikitsa</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -307,29 +340,37 @@ if (session_status() === PHP_SESSION_NONE) {
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
+                        <a class="nav-link <?= $current_page === 'index.php' ? 'active' : '' ?>" href="index.php">
+                            <i class="fas fa-house me-1"></i>Home
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="doctors.php">Doctors</a>
+                        <a class="nav-link <?= $current_page === 'doctors.php' ? 'active' : '' ?>" href="doctors.php">
+                            <i class="fas fa-user-doctor me-1"></i>Doctors
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="about.php">About</a>
+                        <a class="nav-link <?= $current_page === 'about.php' ? 'active' : '' ?>" href="about.php">
+                            <i class="fas fa-circle-info me-1"></i>About
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="contact.php">Contact</a>
+                        <a class="nav-link <?= $current_page === 'contact.php' ? 'active' : '' ?>" href="contact.php">
+                            <i class="fas fa-envelope me-1"></i>Contact
+                        </a>
                     </li>
                     
                     <!-- Conditionally show dashboard links based on login status and role -->
                     <?php if(isset($_SESSION['user_id']) && isset($_SESSION['role'])): ?>
                         <?php if($_SESSION['role'] === 'doctor'): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="doctors_dashboard.php">
+                                <a class="nav-link <?= $current_page === 'doctors_dashboard.php' ? 'active' : '' ?>" href="doctors_dashboard.php">
                                     <i class="fas fa-tachometer-alt me-1"></i>Doctor Dashboard
                                 </a>
                             </li>
                         <?php elseif($_SESSION['role'] === 'patient'): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="patient_dashboard.php">
+                                <a class="nav-link <?= $current_page === 'patient_dashboard.php' ? 'active' : '' ?>" href="patient_dashboard.php">
                                     <i class="fas fa-tachometer-alt me-1"></i>Patient Dashboard
                                 </a>
                             </li>
