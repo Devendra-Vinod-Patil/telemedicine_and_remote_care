@@ -23,12 +23,27 @@ $doctor = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 /* ======================
+   CHECK OPTIONAL PATIENT COLUMNS
+====================== */
+$patient_columns = [];
+$columns_result = $conn->query("SHOW COLUMNS FROM patients");
+if ($columns_result) {
+    while ($column = $columns_result->fetch_assoc()) {
+        $patient_columns[] = $column['Field'];
+    }
+}
+
+$age_select = in_array('age', $patient_columns, true) ? 'p.age AS patient_age' : 'NULL AS patient_age';
+$gender_select = in_array('gender', $patient_columns, true) ? 'p.gender AS patient_gender' : 'NULL AS patient_gender';
+
+/* ======================
    FETCH APPOINTMENTS
 ====================== */
 $stmt = $conn->prepare(
     "SELECT a.id, a.appointment_date, a.appointment_time,
             a.status, a.prescription, a.room_id,
-            p.full_name AS patient_name
+            p.full_name AS patient_name,
+            {$age_select}, {$gender_select}
      FROM appointments a
      JOIN patients p ON a.patient_id = p.id
      WHERE a.doctor_id = ?
@@ -55,6 +70,7 @@ body { background:#f5f2eb; font-family:'Lato',sans-serif; }
 .card { border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,.05); }
 .section-title { border-left:5px solid #e2725b; padding-left:10px; font-weight:700; }
 .doctor-img { width:120px;height:120px;border-radius:50%;border:4px solid #e2725b;object-fit:cover; }
+.medicine-row { border:1px solid #e9ecef; border-radius:8px; padding:10px; margin-bottom:10px; background:#fff; }
 </style>
 </head>
 
@@ -93,11 +109,16 @@ body { background:#f5f2eb; font-family:'Lato',sans-serif; }
 <div class="card p-4">
 <h4 class="section-title mb-3">Appointments</h4>
 
-<!-- ✅ SUCCESS MESSAGE -->
 <?php if (isset($_GET['upload']) && $_GET['upload'] === 'success'): ?>
 <div class="alert alert-success alert-dismissible fade show">
     <i class="fas fa-check-circle me-2"></i>
-    Prescription uploaded successfully. Appointment marked as completed.
+    Digital prescription saved successfully. Appointment marked as completed.
+    <button class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php elseif (isset($_GET['upload']) && $_GET['upload'] === 'error'): ?>
+<div class="alert alert-danger alert-dismissible fade show">
+    <i class="fas fa-times-circle me-2"></i>
+    Could not save digital prescription. Please try again.
     <button class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 <?php endif; ?>
@@ -114,7 +135,7 @@ body { background:#f5f2eb; font-family:'Lato',sans-serif; }
     <th>Time</th>
     <th>Status</th>
     <th>Action</th>
-    <th>Prescription</th>
+    <th>Digital Prescription</th>
 </tr>
 </thead>
 <tbody>
@@ -147,12 +168,81 @@ body { background:#f5f2eb; font-family:'Lato',sans-serif; }
 
 <td>
 <?php if (!empty($row['prescription'])): ?>
-<span class="badge bg-success">Uploaded</span>
+<span class="badge bg-success">Saved</span>
 <?php else: ?>
-<form action="upload_prescription.php" method="POST" enctype="multipart/form-data">
+<form action="upload_prescription.php" method="POST">
 <input type="hidden" name="appointment_id" value="<?= $row['id'] ?>">
-<input type="file" name="prescription" class="form-control form-control-sm mb-1" required>
-<button class="btn btn-dark btn-sm w-100">Upload</button>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Patient Name</label>
+    <input type="text" name="patient_name" class="form-control form-control-sm" value="<?= htmlspecialchars($row['patient_name']) ?>" readonly>
+</div>
+
+<div class="row g-2 mb-2">
+    <div class="col-6">
+        <label class="form-label mb-1 small">Age</label>
+        <input type="number" min="0" max="130" name="age" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($row['patient_age'] ?? '')) ?>">
+    </div>
+    <div class="col-6">
+        <label class="form-label mb-1 small">Gender</label>
+        <?php $gender = strtolower(trim((string)($row['patient_gender'] ?? ''))); ?>
+        <select name="gender" class="form-select form-select-sm">
+            <option value="">Select</option>
+            <option value="male" <?= $gender === 'male' ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= $gender === 'female' ? 'selected' : '' ?>>Female</option>
+            <option value="other" <?= $gender === 'other' ? 'selected' : '' ?>>Other</option>
+        </select>
+    </div>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Diagnosis</label>
+    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" required></textarea>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Medicine</label>
+    <div class="medicine-container" id="medicine-container-<?= $row['id'] ?>">
+        <div class="medicine-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-4">
+                    <label class="form-label mb-1 small">Name</label>
+                    <input list="medicine-suggest-<?= $row['id'] ?>" name="medicine_name[]" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-4">
+                    <label class="form-label mb-1 small">Dose</label>
+                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
+                </div>
+                <div class="col-4">
+                    <label class="form-label mb-1 small">Duration</label>
+                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <datalist id="medicine-suggest-<?= $row['id'] ?>">
+        <option value="Paracetamol"></option>
+        <option value="Amoxicillin"></option>
+        <option value="Ibuprofen"></option>
+        <option value="Cetirizine"></option>
+        <option value="Azithromycin"></option>
+        <option value="Pantoprazole"></option>
+        <option value="Metformin"></option>
+        <option value="Amlodipine"></option>
+        <option value="Atorvastatin"></option>
+        <option value="Omeprazole"></option>
+    </datalist>
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-1 add-medicine-row" data-target="medicine-container-<?= $row['id'] ?>" data-list="medicine-suggest-<?= $row['id'] ?>">
+        + Add Medicine
+    </button>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Note and Advice</label>
+    <textarea name="note_advice" class="form-control form-control-sm" rows="2" placeholder="Diet, hydration, follow-up advice..."></textarea>
+</div>
+
+<button class="btn btn-dark btn-sm w-100">Save</button>
 </form>
 <?php endif; ?>
 </td>
@@ -189,12 +279,81 @@ Start Call
 <?php endif; ?>
 
 <?php if (!empty($row['prescription'])): ?>
-<span class="badge bg-success w-100">Prescription Uploaded</span>
+<span class="badge bg-success w-100">Digital Prescription Saved</span>
 <?php else: ?>
-<form action="upload_prescription.php" method="POST" enctype="multipart/form-data">
+<form action="upload_prescription.php" method="POST">
 <input type="hidden" name="appointment_id" value="<?= $row['id'] ?>">
-<input type="file" name="prescription" class="form-control form-control-sm mb-2" required>
-<button class="btn btn-dark btn-sm w-100">Upload</button>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Patient Name</label>
+    <input type="text" name="patient_name" class="form-control form-control-sm" value="<?= htmlspecialchars($row['patient_name']) ?>" readonly>
+</div>
+
+<div class="row g-2 mb-2">
+    <div class="col-6">
+        <label class="form-label mb-1 small">Age</label>
+        <input type="number" min="0" max="130" name="age" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($row['patient_age'] ?? '')) ?>">
+    </div>
+    <div class="col-6">
+        <label class="form-label mb-1 small">Gender</label>
+        <?php $gender = strtolower(trim((string)($row['patient_gender'] ?? ''))); ?>
+        <select name="gender" class="form-select form-select-sm">
+            <option value="">Select</option>
+            <option value="male" <?= $gender === 'male' ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= $gender === 'female' ? 'selected' : '' ?>>Female</option>
+            <option value="other" <?= $gender === 'other' ? 'selected' : '' ?>>Other</option>
+        </select>
+    </div>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Diagnosis</label>
+    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" required></textarea>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Medicine</label>
+    <div class="medicine-container" id="medicine-mobile-container-<?= $row['id'] ?>">
+        <div class="medicine-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-12">
+                    <label class="form-label mb-1 small">Name</label>
+                    <input list="medicine-mobile-suggest-<?= $row['id'] ?>" name="medicine_name[]" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-6">
+                    <label class="form-label mb-1 small">Dose</label>
+                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
+                </div>
+                <div class="col-6">
+                    <label class="form-label mb-1 small">Duration</label>
+                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <datalist id="medicine-mobile-suggest-<?= $row['id'] ?>">
+        <option value="Paracetamol"></option>
+        <option value="Amoxicillin"></option>
+        <option value="Ibuprofen"></option>
+        <option value="Cetirizine"></option>
+        <option value="Azithromycin"></option>
+        <option value="Pantoprazole"></option>
+        <option value="Metformin"></option>
+        <option value="Amlodipine"></option>
+        <option value="Atorvastatin"></option>
+        <option value="Omeprazole"></option>
+    </datalist>
+    <button type="button" class="btn btn-outline-secondary btn-sm mt-1 add-medicine-row" data-target="medicine-mobile-container-<?= $row['id'] ?>" data-list="medicine-mobile-suggest-<?= $row['id'] ?>">
+        + Add Medicine
+    </button>
+</div>
+
+<div class="mb-2">
+    <label class="form-label mb-1 small">Note and Advice</label>
+    <textarea name="note_advice" class="form-control form-control-sm" rows="2" placeholder="Diet, hydration, follow-up advice..."></textarea>
+</div>
+
+<button class="btn btn-dark btn-sm w-100">Save</button>
 </form>
 <?php endif; ?>
 </div>
@@ -221,6 +380,39 @@ $('.status-select').change(function(){
         appointment_id: el.data('id'),
         status: el.val()
     },()=>el.prop('disabled', false));
+});
+
+$(document).on('click', '.add-medicine-row', function(){
+    const containerId = $(this).data('target');
+    const datalistId = $(this).data('list');
+    const container = $('#' + containerId);
+
+    const rowHtml = `
+        <div class="medicine-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4 col-12">
+                    <label class="form-label mb-1 small">Name</label>
+                    <input list="${datalistId}" name="medicine_name[]" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-4 col-6">
+                    <label class="form-label mb-1 small">Dose</label>
+                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label mb-1 small">Duration</label>
+                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
+                </div>
+                <div class="col-md-1 col-12">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-medicine-row">×</button>
+                </div>
+            </div>
+        </div>`;
+
+    container.append(rowHtml);
+});
+
+$(document).on('click', '.remove-medicine-row', function(){
+    $(this).closest('.medicine-row').remove();
 });
 </script>
 
