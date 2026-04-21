@@ -8,6 +8,8 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../database.php';
 require_once __DIR__ . '/chatbot_service.php';
 
+const CHATBOT_MAX_CONVERSATION_HISTORY = 50;
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
@@ -28,7 +30,13 @@ if (!isset($_SESSION['chatbot_conversation']) || !is_array($_SESSION['chatbot_co
     $_SESSION['chatbot_conversation'] = [];
 }
 
-$response = chatbot_handle_message($conn, $message);
+try {
+    $response = chatbot_handle_message($conn, $message);
+} catch (Throwable $exception) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Unable to process request at this time.']);
+    exit;
+}
 
 $_SESSION['chatbot_conversation'][] = [
     'role' => 'user',
@@ -43,8 +51,8 @@ $_SESSION['chatbot_conversation'][] = [
     'time' => date('c'),
 ];
 
-if (count($_SESSION['chatbot_conversation']) > 50) {
-    $_SESSION['chatbot_conversation'] = array_slice($_SESSION['chatbot_conversation'], -50);
+if (count($_SESSION['chatbot_conversation']) > CHATBOT_MAX_CONVERSATION_HISTORY) {
+    $_SESSION['chatbot_conversation'] = array_slice($_SESSION['chatbot_conversation'], -CHATBOT_MAX_CONVERSATION_HISTORY);
 }
 
 echo json_encode([

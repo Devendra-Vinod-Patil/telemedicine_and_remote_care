@@ -67,7 +67,7 @@ require_once __DIR__ . '/chatbot_service.php';
 <div class="container chatbot-wrap">
     <div class="chatbot-card">
         <div class="chatbot-top">
-            <img src="assets/virtual-chikitsa-logo.svg" alt="Virtual-Chikitsa logo" onerror="this.style.display='none'">
+            <img src="assets/virtual-chikitsa-logo.svg" alt="Virtual-Chikitsa logo">
             <div>
                 <h1 class="h5 mb-0 fw-bold">Virtual-Chikitsa Assistant</h1>
                 <small>Doctor specialty suggestions, medicine info, and slot availability</small>
@@ -80,7 +80,7 @@ require_once __DIR__ . '/chatbot_service.php';
         </p>
 
         <div id="chatLog" class="chat-log" aria-live="polite">
-            <div class="chat-bubble bot">Hi! Share your symptoms, ask medicine details, or ask for available doctors/appointment slots.<?php echo "\n\n" . htmlspecialchars(CHATBOT_DISCLAIMER); ?></div>
+            <div class="chat-bubble bot">Hi! Share your symptoms, ask medicine details, or ask for available doctors/appointment slots.</div>
         </div>
 
         <form id="chatForm" class="chat-form" autocomplete="off">
@@ -122,7 +122,7 @@ require_once __DIR__ . '/chatbot_service.php';
         input.value = '';
 
         try {
-            const res = await fetch('chatbot/chat.php', {
+            const res = await fetch('/chatbot/chat.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message })

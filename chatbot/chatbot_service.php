@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 const CHATBOT_DISCLAIMER = '⚠️ Medical disclaimer: This chatbot provides general educational information only. It does not diagnose conditions, prescribe medicines, or replace a licensed doctor. If symptoms are severe, persistent, or emergency-related, seek immediate professional care.';
 const CHATBOT_CONSENT = 'By continuing, you acknowledge and consent that chatbot guidance is informational and you should confirm medical decisions with a licensed doctor.';
+const CHATBOT_AVAILABILITY_DAYS_AHEAD = 7;
+const CHATBOT_CANDIDATE_TIMES = ['09:00', '11:00', '14:00', '16:00', '18:00'];
 
 /**
  * @return array{intent:string, medicine_name:?string}
@@ -138,22 +140,27 @@ function chatbot_get_doctor_availability(mysqli $conn, int $limit = 5): array
         $bookings = $booking_stmt->get_result();
         while ($row = $bookings->fetch_assoc()) {
             $doctor_id = (int) $row['doctor_id'];
-            $key = $row['appointment_date'] . ' ' . substr((string) $row['appointment_time'], 0, 5);
+            $time_value = (string) ($row['appointment_time'] ?? '');
+            $parsed_time = DateTime::createFromFormat('H:i:s', $time_value) ?: DateTime::createFromFormat('H:i', $time_value);
+            if (!$parsed_time) {
+                continue;
+            }
+            $time_key = $parsed_time->format('H:i');
+            $key = $row['appointment_date'] . ' ' . $time_key;
             $booked_slots[$doctor_id][$key] = true;
         }
         $booking_stmt->close();
     }
 
-    $candidate_times = ['09:00', '11:00', '14:00', '16:00', '18:00'];
     $now = new DateTimeImmutable('now');
 
     while ($doctor = $doctor_result->fetch_assoc()) {
         $doctor_id = (int) $doctor['id'];
         $next_slot = null;
 
-        for ($day_offset = 0; $day_offset <= 7; $day_offset++) {
+        for ($day_offset = 0; $day_offset <= CHATBOT_AVAILABILITY_DAYS_AHEAD; $day_offset++) {
             $date = $now->modify('+' . $day_offset . ' day')->format('Y-m-d');
-            foreach ($candidate_times as $time) {
+            foreach (CHATBOT_CANDIDATE_TIMES as $time) {
                 $slot_datetime = DateTimeImmutable::createFromFormat('Y-m-d H:i', $date . ' ' . $time);
                 if (!$slot_datetime || $slot_datetime <= $now) {
                     continue;

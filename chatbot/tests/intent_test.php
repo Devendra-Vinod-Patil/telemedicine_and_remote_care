@@ -23,7 +23,7 @@ if ($intent['intent'] !== 'symptom') {
 
 $suggestion = chatbot_suggest_specialty_from_problem('I have chest pain and high bp');
 if ($suggestion['specialty'] !== 'Cardiology') {
-    $failures[] = 'Expected Cardiology specialty';
+    $failures[] = 'Expected Cardiology specialty for chest pain and high bp';
 }
 
 if (!empty($failures)) {

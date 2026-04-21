@@ -327,7 +327,7 @@ $full_title = ($page_title === $company_brand) ? $company_brand : ($page_title .
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?= $current_page === 'chatbot/index.php' ? 'active' : '' ?>" href="chatbot/index.php">
+                        <a class="nav-link <?= $current_page === 'chatbot/index.php' ? 'active' : '' ?>" href="/chatbot/index.php">
                             <i class="fas fa-robot me-1"></i>Chatbot
                         </a>
                     </li>
