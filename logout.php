@@ -1,5 +1,5 @@
 <?php
-// logout.php - Secure logout functionality for TeleMedCare
+// logout.php - Secure logout functionality for Virtual-Chikitsa
 
 // Start session
 session_start();

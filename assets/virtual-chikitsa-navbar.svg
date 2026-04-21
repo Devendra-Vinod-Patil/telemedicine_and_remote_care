@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="180" viewBox="0 0 900 180">
+  <!-- Transparent background; meant to sit on the navbar gradient -->
+  <defs>
+    <style>
+      .w { fill: #ffffff; }
+      .o { fill: #ff7a18; }
+    </style>
+  </defs>
+
+  <!-- Compact emblem (white) -->
+  <g class="w" transform="translate(28 18)">
+    <path d="M62 26c-21 0-42 10-54 26 17-10 32-12 52-6-17 0-31 4-46 16 21-4 36-3 56 7-17 1-28 6-38 16 21-6 33-6 52 3 18-9 31-9 52-3-10-10-21-15-38-16 19-10 35-11 56-7-15-12-29-16-46-16 20-6 35-4 52 6C104 36 83 26 62 26z" opacity="0.95"/>
+    <rect x="58" y="38" width="8" height="112" rx="4"/>
+    <circle cx="62" cy="30" r="10"/>
+    <path d="M42 72c18-10 36-10 52 0 13 8 13 22 0 30-11 7-22 7-33 0-9-6-9-14 0-20 11-7 22-7 33 0"
+          fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+    <path d="M82 120c-18 10-36 10-52 0-13-8-13-22 0-30 11-7 22-7 33 0 9 6 9 14 0 20-11 7-22 7-33 0"
+          fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark (orange) -->
+  <text x="170" y="118" class="o" font-family="Segoe UI, Arial, sans-serif" font-weight="900" font-size="96">
+    Virtual-Chikitsa
+  </text>
+</svg>
+

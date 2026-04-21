@@ -3,6 +3,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $current_page = basename($_SERVER['PHP_SELF'] ?? '');
+$company_brand = 'Virtual-Chikitsa';
+$page_title = $page_title ?? $company_brand;
+$full_title = ($page_title === $company_brand) ? $company_brand : ($page_title . ' - ' . $company_brand);
 ?>
 
 <!DOCTYPE html>
@@ -10,19 +13,14 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeleMedCare - Virtual Healthcare Solutions</title>
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Google Fonts - Lato -->
+    <title><?php echo htmlspecialchars($full_title); ?></title>
+    <meta name="theme-color" content="#1f3fa8">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <!-- Custom Styles -->
+
     <style>
         :root {
             --primary: #1d4ed8;
@@ -50,36 +48,76 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
             backdrop-filter: blur(10px);
             box-shadow: 0 14px 34px rgba(15, 23, 42, 0.24);
             border-bottom: 1px solid rgba(255,255,255,0.14);
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
 
         .navbar-brand {
             font-weight: 800;
             color: #fff !important;
-            font-size: 2rem;
+            font-size: 1.5rem;
             letter-spacing: .3px;
             display: inline-flex;
             align-items: center;
             gap: 12px;
+            text-decoration: none;
         }
 
         .brand-logo-wrap {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.15);
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.14);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+            overflow: hidden;
+        }
+
+        .brand-logo-img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            display: block;
+            filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.25));
         }
 
         .brand-logo-wrap svg {
-            width: 22px;
-            height: 22px;
+            width: 34px;
+            height: 34px;
+            display: block;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.05;
+        }
+
+        .brand-name {
+            font-weight: 900;
+            letter-spacing: .4px;
+            font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+            color: #fff;
+            text-shadow: 0 10px 18px rgba(0,0,0,0.2);
+        }
+
+        .brand-subtitle {
+            font-weight: 600;
+            font-size: .82rem;
+            color: rgba(255,255,255,0.78);
         }
 
         .navbar-toggler {
             border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 14px;
+            padding: 8px 10px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: 0 0 0 .25rem rgba(255,255,255,0.18);
         }
 
         .navbar-nav .nav-link {
@@ -168,92 +206,6 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
             font-weight: 700;
         }
 
-        .hero-section {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(130deg, #1e3a8a 0%, #1d4ed8 45%, #14b8a6 100%);
-            color: #fff;
-            padding: 110px 0;
-            border-radius: 0 0 36px 36px;
-        }
-
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.18), transparent 45%),
-                        radial-gradient(circle at 80% 70%, rgba(255,255,255,0.16), transparent 45%);
-            animation: pulseGlow 8s ease-in-out infinite;
-            pointer-events: none;
-        }
-
-        .hero-section > .container {
-            position: relative;
-            z-index: 2;
-        }
-
-        .section-title {
-            color: var(--primary-dark);
-            font-weight: 700;
-            margin-bottom: 30px;
-            position: relative;
-            padding-bottom: 12px;
-        }
-
-        .section-title:after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 64px;
-            height: 3px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-        }
-
-        .feature-icon {
-            background: linear-gradient(135deg, rgba(29, 78, 216, 0.12), rgba(20, 184, 166, 0.2));
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            color: var(--primary);
-            font-size: 1.8rem;
-        }
-
-        .testimonial-card {
-            background-color: #fff;
-            border-left: 4px solid var(--accent);
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
-        }
-
-        .testimonial-text {
-            font-style: italic;
-            color: #475569;
-        }
-
-        .testimonial-author {
-            font-weight: 700;
-            color: var(--primary-dark);
-        }
-
-        .step-number {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: #fff;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            margin: 0 auto 15px;
-            box-shadow: 0 8px 18px rgba(20, 184, 166, 0.25);
-        }
-
         .user-welcome {
             color: #fff !important;
             font-weight: 700;
@@ -263,53 +215,48 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
             border-radius: 999px;
         }
 
-        .floating-chatbot {
-            position: fixed;
-            bottom: 28px;
-            right: 28px;
-            z-index: 1000;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            width: 58px;
-            height: 58px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 1.4rem;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.28);
-            transition: transform .25s ease;
-        }
-
-        .floating-chatbot:hover {
-            transform: translateY(-3px) scale(1.05);
-            color: #fff;
-        }
-
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.75; }
-            50% { opacity: 1; }
-        }
-
-        @media (max-width: 768px) {
-            .hero-section {
-                padding: 72px 0;
-                text-align: center;
+        @media (max-width: 991.98px) {
+            .navbar-brand {
+                font-size: 1.25rem;
             }
 
-            .section-title {
-                text-align: center;
+            .brand-subtitle {
+                display: none;
             }
 
-            .section-title:after {
-                left: 50%;
-                transform: translateX(-50%);
+            .brand-logo-wrap {
+                width: 42px;
+                height: 42px;
+                border-radius: 13px;
+            }
+
+            .brand-logo-img,
+            .brand-logo-wrap svg {
+                width: 30px;
+                height: 30px;
+            }
+
+            .navbar-collapse {
+                margin-top: 14px;
+                background: rgba(8, 16, 42, 0.22);
+                border-radius: 18px;
+                padding: 14px;
+                backdrop-filter: blur(8px);
+            }
+
+            .navbar-nav .nav-link {
+                margin: 3px 0;
             }
 
             .user-welcome {
                 margin: 10px 0;
                 text-align: center;
                 display: block;
+            }
+
+            .mobile-auth-actions {
+                display: grid;
+                gap: 10px;
             }
         }
 
@@ -320,21 +267,41 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
             }
         }
     </style>
+    <?php
+    // Optional per-page head injection (extra CSS/links).
+    if (!empty($extra_head)) {
+        echo $extra_head;
+    }
+    ?>
 </head>
 <body>
-    <!-- Header/Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">
+        <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand" href="index.php" aria-label="Virtual Chikitsa">
                 <span class="brand-logo-wrap" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 20s-6.5-4.35-9.07-8.09C1.1 9.18 2.3 5.5 5.5 4.69c2-.5 3.77.23 5 1.64 1.23-1.41 3-2.14 5-1.64 3.2.81 4.4 4.49 2.57 7.22C18.5 15.65 12 20 12 20Z" fill="white"/>
-                        <path d="M6 12h2.7l1.5-2.2L12 14l1.35-2H18" stroke="#1f3fa8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <img
+                        class="brand-logo-img"
+                        src="assets/virtual-chikitsa-logo.svg?v=1"
+                        alt="Virtual-Chikitsa"
+                        onerror="this.style.display='none'; var el=document.getElementById('brandSvg'); if(el){ el.style.display='block'; }"
+                    >
+                    <!-- Inline fallback (same logo) so it still shows even if SVG files are blocked/mis-typed by the server -->
+                    <svg id="brandSvg" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Virtual Chikitsa">
+                        <g fill="#ffffff" transform="translate(18 12)">
+                            <path d="M42 18c-14 0-28 7-36 18 11-7 22-8 35-4-12 0-21 3-31 11 14-3 24-2 37 5-11 1-18 4-25 11 14-4 22-4 35 2 12-6 21-6 35-2-7-7-14-10-25-11 13-7 23-8 37-5-10-8-19-11-31-11 13-4 24-3 35 4C70 25 56 18 42 18z" opacity="0.95"/>
+                            <rect x="38" y="26" width="8" height="72" rx="4"/>
+                            <circle cx="42" cy="20" r="9"/>
+                            <path d="M26 48c12-7 24-7 35 0 9 5 9 15 0 20-8 5-15 5-22 0-6-4-6-9 0-13 7-5 15-5 22 0" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+                            <path d="M58 78c-12 7-24 7-35 0-9-5-9-15 0-20 8-5 15-5 22 0 6 4 6 9 0 13-7 5-15 5-22 0" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+                        </g>
                     </svg>
                 </span>
-                <span>Virtual-Chikitsa</span>
+                <span class="brand-text">
+                    <span class="brand-name"><?php echo htmlspecialchars($company_brand); ?></span>
+                    <span class="brand-subtitle">online medical consultation</span>
+                </span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" id="navbarToggle" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -359,16 +326,14 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
                             <i class="fas fa-envelope me-1"></i>Contact
                         </a>
                     </li>
-                    
-                    <!-- Conditionally show dashboard links based on login status and role -->
-                    <?php if(isset($_SESSION['user_id']) && isset($_SESSION['role'])): ?>
-                        <?php if($_SESSION['role'] === 'doctor'): ?>
+                    <?php if (isset($_SESSION['user_id']) && isset($_SESSION['role'])): ?>
+                        <?php if ($_SESSION['role'] === 'doctor'): ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page === 'doctors_dashboard.php' ? 'active' : '' ?>" href="doctors_dashboard.php">
                                     <i class="fas fa-tachometer-alt me-1"></i>Doctor Dashboard
                                 </a>
                             </li>
-                        <?php elseif($_SESSION['role'] === 'patient'): ?>
+                        <?php elseif ($_SESSION['role'] === 'patient'): ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page === 'patient_dashboard.php' ? 'active' : '' ?>" href="patient_dashboard.php">
                                     <i class="fas fa-tachometer-alt me-1"></i>Patient Dashboard
@@ -377,18 +342,17 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
                         <?php endif; ?>
                     <?php endif; ?>
                 </ul>
-                
-                <div class="ms-lg-3 mt-3 mt-lg-0">
-                    <?php if(isset($_SESSION['user_id'])): ?>
-                        <!-- Show welcome message and logout when user is logged in -->
+
+                <div class="ms-lg-3 mt-3 mt-lg-0 mobile-auth-actions">
+                    <?php if (isset($_SESSION['user_id'])): ?>
                         <span class="user-welcome d-none d-lg-inline">
                             <i class="fas fa-user me-1"></i>
-                            Welcome, 
-                            <?php 
-                            if($_SESSION['role'] === 'doctor') {
-                                echo 'Dr. ' . $_SESSION['full_name'];
+                            Welcome,
+                            <?php
+                            if (($_SESSION['role'] ?? '') === 'doctor') {
+                                echo 'Dr. ' . htmlspecialchars($_SESSION['full_name'] ?? '');
                             } else {
-                                echo $_SESSION['full_name'];
+                                echo htmlspecialchars($_SESSION['full_name'] ?? '');
                             }
                             ?>
                         </span>
@@ -396,11 +360,27 @@ $current_page = basename($_SERVER['PHP_SELF'] ?? '');
                             <i class="fas fa-sign-out-alt me-1"></i>Logout
                         </a>
                     <?php else: ?>
-                        <!-- Show login/signup when user is not logged in -->
-                        <a href="login.php" class="btn btn-outline-light me-2">Login</a>
+                        <a href="login.php" class="btn btn-outline-light me-lg-2">Login</a>
                         <a href="registration.html" class="btn btn-light" style="color: var(--primary-dark);">Sign Up</a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </nav>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            var toggle = document.getElementById('navbarToggle');
+            var nav = document.getElementById('navbarNav');
+            if (!toggle || !nav) return;
+
+            toggle.addEventListener('click', function () {
+                if (window.bootstrap && bootstrap.Collapse) {
+                    return;
+                }
+                nav.classList.toggle('show');
+                var expanded = nav.classList.contains('show');
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            });
+        })();
+    </script>

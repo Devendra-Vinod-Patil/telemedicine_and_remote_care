@@ -1,4 +1,4 @@
-<?php include 'header.php'; ?>
+<?php $page_title = 'Home'; include 'header.php'; ?>
 
     <!-- Hero Section -->
     <section class="hero-section">
@@ -6,7 +6,7 @@
             <div class="row align-items-center">
                 <div class="col-lg-6 mb-5 mb-lg-0">
                     <h1 class="display-4 fw-bold mb-4">Healthcare at Your Fingertips</h1>
-                    <p class="lead mb-4">Connect with licensed doctors instantly through our secure telemedicine platform from the comfort of your home.</p>
+                    <p class="lead mb-4">Connect with licensed doctors instantly through our secure online consultation platform from the comfort of your home.</p>
                     <div class="d-flex flex-column flex-sm-row gap-3">
                         <a href="doctors.php" class="btn btn-primary btn-lg">Book Appointment</a>
                         <a href="#how-it-works" class="btn btn-outline-light btn-lg">Learn More</a>
@@ -22,7 +22,7 @@
     <!-- Features Section -->
     <section class="py-5">
         <div class="container py-5">
-            <h2 class="section-title text-center">Why Choose TeleMedCare?</h2>
+            <h2 class="section-title text-center">Why Choose Virtual-Chikitsa?</h2>
             <p class="text-center text-muted mb-5">Our platform offers comprehensive virtual healthcare solutions tailored to your needs.</p>
             
             <div class="row g-4">

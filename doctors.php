@@ -1,5 +1,5 @@
-<?php include 'header.php';?>
 <?php
+$page_title = 'Find Doctors';
 require_once "database.php"; // DB connection
 
 $search_query = '';
@@ -14,28 +14,12 @@ $sql = "SELECT id, full_name, specialization, experience, clinic, photo
            OR specialization LIKE '%$search_query%' 
            OR clinic LIKE '%$search_query%'";
 $result = $conn->query($sql);
+
+include 'header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Find Doctors - TeleMedCare</title>
-  
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <!-- Google Fonts - Lato -->
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-  
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Animate.css -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-  
-  <style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<style>
     :root {
         --terracotta: #e2725b;
         --light-beige: #f5f2eb;
@@ -217,8 +201,6 @@ $result = $conn->query($sql);
         }
     }
   </style>
-</head>
-<body>
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="container">
@@ -346,9 +328,8 @@ $result = $conn->query($sql);
     </div>
   </section>
 
-  <!-- Bootstrap JS Bundle with Popper -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-  
+  <?php include 'footer.php'; ?>
+
   <script>
     // Add animation to cards on scroll
     document.addEventListener('DOMContentLoaded', function() {
@@ -388,8 +369,5 @@ $result = $conn->query($sql);
       });
     });
   </script>
-</body>
-</html>
-<?php include 'footer.php';?>
 
 <?php $conn->close(); ?>

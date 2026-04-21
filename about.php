@@ -1,8 +1,8 @@
-<?php include 'header.php'; ?>
+<?php $page_title = 'About'; include 'header.php'; ?>
 
 <div class="container-fluid bg-light-beige py-5">
     <div class="container text-center py-4">
-        <h1 class="display-5 fw-bold text-muted-teal">About TeleMedCare</h1>
+        <h1 class="display-5 fw-bold text-muted-teal">About Virtual-Chikitsa</h1>
         <p class="fs-5 text-secondary col-md-8 mx-auto mt-3">
             Bringing healthcare closer to you with technology, trust, and compassionate care.
         </p>
@@ -78,7 +78,7 @@
 <div class="container text-center my-5 py-5">
      <h2 class="fw-bold text-muted-teal">Ready to Experience Modern Healthcare?</h2>
         <p class="fs-5 text-secondary col-md-8 mx-auto mt-3 mb-4">
-            Join thousands of patients who trust TeleMedCare for their health needs. Get started by finding a specialist today.
+            Join thousands of patients who trust Virtual-Chikitsa for their health needs. Get started by finding a specialist today.
         </p>
         <a href="doctors.php" class="btn btn-custom rounded-pill">Find a Doctor</a>
 </div>

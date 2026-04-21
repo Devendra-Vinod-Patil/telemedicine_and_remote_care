@@ -1,420 +1,245 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
-    header("Location: login.php");
+
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'doctor') {
+    header('Location: login.php');
     exit();
 }
 
 include 'database.php';
-include 'header.php';
 
-$doctor_id = $_SESSION['user_id'];
+function get_columns(mysqli $conn, string $table): array
+{
+    $columns = [];
+    $result = $conn->query("SHOW COLUMNS FROM `{$table}`");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[] = $row['Field'];
+        }
+    }
+    return $columns;
+}
 
-/* ======================
-   FETCH DOCTOR INFO
-====================== */
-$stmt = $conn->prepare(
-    "SELECT full_name, specialization, photo, clinic, experience 
-     FROM doctors WHERE id = ?"
-);
-$stmt->bind_param("i", $doctor_id);
+function ensure_column(mysqli $conn, string $table, string $column, string $definition): bool
+{
+    $table_safe = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+    $column_safe = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+
+    $result = $conn->query("SHOW COLUMNS FROM `{$table_safe}` LIKE '{$column_safe}'");
+    if ($result && $result->num_rows > 0) {
+        return true;
+    }
+
+    return (bool) $conn->query("ALTER TABLE `{$table_safe}` ADD COLUMN `{$column_safe}` {$definition}");
+}
+
+function parse_digital_prescription($prescription_raw): ?array
+{
+    if (!is_string($prescription_raw) || trim($prescription_raw) === '') {
+        return null;
+    }
+
+    $decoded = json_decode($prescription_raw, true);
+    if (!is_array($decoded) || trim((string) ($decoded['diagnosis'] ?? '')) === '') {
+        return null;
+    }
+
+    return $decoded;
+}
+
+$doctor_id = (int) $_SESSION['user_id'];
+$flash_success = $_SESSION['flash_success'] ?? '';
+$flash_error = $_SESSION['flash_error'] ?? '';
+unset($_SESSION['flash_success'], $_SESSION['flash_error']);
+
+ensure_column($conn, 'appointments', 'doctor_hidden', 'TINYINT(1) NOT NULL DEFAULT 0');
+
+$doctor_columns = get_columns($conn, 'doctors');
+$patient_columns = get_columns($conn, 'patients');
+
+$signature_select = in_array('signature', $doctor_columns, true) ? 'signature' : 'NULL AS signature';
+$photo_select = in_array('photo', $doctor_columns, true) ? 'photo' : 'NULL AS photo';
+$age_select = in_array('age', $patient_columns, true) ? 'p.age AS patient_age' : 'NULL AS patient_age';
+$gender_select = in_array('gender', $patient_columns, true) ? 'p.gender AS patient_gender' : 'NULL AS patient_gender';
+
+$stmt = $conn->prepare("SELECT full_name, specialization, clinic, {$signature_select}, {$photo_select} FROM doctors WHERE id = ?");
+$stmt->bind_param('i', $doctor_id);
 $stmt->execute();
 $doctor = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-/* ======================
-   CHECK OPTIONAL PATIENT COLUMNS
-====================== */
-$patient_columns = [];
-$columns_result = $conn->query("SHOW COLUMNS FROM patients");
-if ($columns_result) {
-    while ($column = $columns_result->fetch_assoc()) {
-        $patient_columns[] = $column['Field'];
-    }
-}
-
-$age_select = in_array('age', $patient_columns, true) ? 'p.age AS patient_age' : 'NULL AS patient_age';
-$gender_select = in_array('gender', $patient_columns, true) ? 'p.gender AS patient_gender' : 'NULL AS patient_gender';
-
-/* ======================
-   FETCH APPOINTMENTS
-====================== */
 $stmt = $conn->prepare(
-    "SELECT a.id, a.appointment_date, a.appointment_time,
-            a.status, a.prescription, a.room_id,
-            p.full_name AS patient_name,
-            {$age_select}, {$gender_select}
+    "SELECT a.id, a.appointment_date, a.appointment_time, a.status, a.prescription,
+            p.full_name AS patient_name, {$age_select}, {$gender_select}
      FROM appointments a
      JOIN patients p ON a.patient_id = p.id
-     WHERE a.doctor_id = ?
-     ORDER BY a.appointment_date, a.appointment_time"
+     WHERE a.doctor_id = ? AND COALESCE(a.doctor_hidden, 0) = 0
+     ORDER BY a.appointment_date DESC, a.appointment_time DESC"
 );
-$stmt->bind_param("i", $doctor_id);
+$stmt->bind_param('i', $doctor_id);
 $stmt->execute();
 $appointments = $stmt->get_result();
 $stmt->close();
+
+include 'header.php';
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Doctor Dashboard</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
 <style>
-body { background:#f5f2eb; font-family:'Lato',sans-serif; }
-.card { border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,.05); }
-.section-title { border-left:5px solid #e2725b; padding-left:10px; font-weight:700; }
-.doctor-img { width:120px;height:120px;border-radius:50%;border:4px solid #e2725b;object-fit:cover; }
-.medicine-row { border:1px solid #e9ecef; border-radius:8px; padding:10px; margin-bottom:10px; background:#fff; }
+    .dash-wrap { padding: 28px 0 56px; }
+    .dash-card {
+        background: #fff;
+        border: 1px solid rgba(148,163,184,.2);
+        border-radius: 20px;
+        box-shadow: 0 16px 30px rgba(15,23,42,.07);
+        padding: 22px;
+        margin-bottom: 20px;
+    }
+    .dash-card:hover { transform: none; }
+    .table thead th { background: #f8fbfd; white-space: nowrap; }
+    .badge-status { border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: .82rem; text-transform: capitalize; }
+    .status-pending { background: #fff5cc; color: #8a6d00; }
+    .status-confirmed { background: #dff6ff; color: #0c5f8a; }
+    .status-completed { background: #dff7e7; color: #146c43; }
+    .status-cancelled { background: #fde2e4; color: #a61e2d; }
+    .form-control, .form-select { min-height: 42px; border-radius: 10px; }
+    .doctor-photo {
+        width: 78px;
+        height: 78px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #dbe4ec;
+    }
 </style>
-</head>
 
-<body>
-<div class="container py-5">
-
-<!-- ================= HEADER ================= -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold">Doctor Dashboard</h3>
-    <a href="logout.php" class="btn btn-outline-danger btn-sm">
-        <i class="fas fa-sign-out-alt me-1"></i> Logout
-    </a>
-</div>
-
-<!-- ================= PROFILE ================= -->
-<div class="card p-4 mb-4">
-<div class="row align-items-center">
-    <div class="col-md-2 text-center">
-        <?php
-        $photo = (!empty($doctor['photo']) && file_exists($doctor['photo']))
-                 ? $doctor['photo']
-                 : "https://via.placeholder.com/120x120/2f3e46/ffffff?text=DR";
-        ?>
-        <img src="<?= $photo ?>" class="doctor-img">
-    </div>
-    <div class="col-md-10">
-        <h4 class="fw-bold"><?= htmlspecialchars($doctor['full_name']) ?></h4>
-        <p class="mb-1"><i class="fas fa-stethoscope me-2"></i><?= htmlspecialchars($doctor['specialization']) ?></p>
-        <p class="mb-1"><i class="fas fa-hospital me-2"></i><?= htmlspecialchars($doctor['clinic']) ?></p>
-        <p><i class="fas fa-award me-2"></i><?= $doctor['experience'] ?> years experience</p>
-    </div>
-</div>
-</div>
-
-<!-- ================= APPOINTMENTS ================= -->
-<div class="card p-4">
-<h4 class="section-title mb-3">Appointments</h4>
-
-<?php if (isset($_GET['upload']) && $_GET['upload'] === 'success'): ?>
-<div class="alert alert-success alert-dismissible fade show">
-    <i class="fas fa-check-circle me-2"></i>
-    Digital prescription saved successfully. Appointment marked as completed.
-    <button class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<?php elseif (isset($_GET['upload']) && $_GET['upload'] === 'error'): ?>
-<div class="alert alert-danger alert-dismissible fade show">
-    <i class="fas fa-times-circle me-2"></i>
-    Could not save digital prescription. Please try again.
-    <button class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-<?php endif; ?>
-
-<?php if ($appointments->num_rows > 0): ?>
-
-<!-- DESKTOP -->
-<div class="table-responsive d-none d-md-block">
-<table class="table table-hover align-middle">
-<thead class="table-light">
-<tr>
-    <th>Patient</th>
-    <th>Date</th>
-    <th>Time</th>
-    <th>Status</th>
-    <th>Action</th>
-    <th>Digital Prescription</th>
-</tr>
-</thead>
-<tbody>
-
-<?php while($row = $appointments->fetch_assoc()): ?>
-<tr>
-<td><?= htmlspecialchars($row['patient_name']) ?></td>
-<td><?= date("d M Y", strtotime($row['appointment_date'])) ?></td>
-<td><?= date("h:i A", strtotime($row['appointment_time'])) ?></td>
-
-<td>
-<select class="form-select status-select" data-id="<?= $row['id'] ?>">
-    <?php foreach (['pending','confirmed','completed','cancelled'] as $s): ?>
-        <option value="<?= $s ?>" <?= $row['status']===$s?'selected':'' ?>>
-            <?= ucfirst($s) ?>
-        </option>
-    <?php endforeach; ?>
-</select>
-</td>
-
-<td>
-<?php if ($row['status'] === 'confirmed'): ?>
-<a href="video.php?appointment_id=<?= $row['id'] ?>" class="btn btn-primary btn-sm">
-<i class="fas fa-video me-1"></i> Start Call
-</a>
-<?php else: ?>
-<span class="text-muted">N/A</span>
-<?php endif; ?>
-</td>
-
-<td>
-<?php if (!empty($row['prescription'])): ?>
-<span class="badge bg-success">Saved</span>
-<?php else: ?>
-<form action="upload_prescription.php" method="POST">
-<input type="hidden" name="appointment_id" value="<?= $row['id'] ?>">
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Patient Name</label>
-    <input type="text" name="patient_name" class="form-control form-control-sm" value="<?= htmlspecialchars($row['patient_name']) ?>" readonly>
-</div>
-
-<div class="row g-2 mb-2">
-    <div class="col-6">
-        <label class="form-label mb-1 small">Age</label>
-        <input type="number" min="0" max="130" name="age" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($row['patient_age'] ?? '')) ?>">
-    </div>
-    <div class="col-6">
-        <label class="form-label mb-1 small">Gender</label>
-        <?php $gender = strtolower(trim((string)($row['patient_gender'] ?? ''))); ?>
-        <select name="gender" class="form-select form-select-sm">
-            <option value="">Select</option>
-            <option value="male" <?= $gender === 'male' ? 'selected' : '' ?>>Male</option>
-            <option value="female" <?= $gender === 'female' ? 'selected' : '' ?>>Female</option>
-            <option value="other" <?= $gender === 'other' ? 'selected' : '' ?>>Other</option>
-        </select>
-    </div>
-</div>
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Diagnosis</label>
-    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" required></textarea>
-</div>
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Medicine</label>
-    <div class="medicine-container" id="medicine-container-<?= $row['id'] ?>">
-        <div class="medicine-row">
-            <div class="row g-2 align-items-end">
-                <div class="col-4">
-                    <label class="form-label mb-1 small">Name</label>
-                    <input list="medicine-suggest-<?= $row['id'] ?>" name="medicine_name[]" class="form-control form-control-sm" required>
-                </div>
-                <div class="col-4">
-                    <label class="form-label mb-1 small">Dose</label>
-                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
-                </div>
-                <div class="col-4">
-                    <label class="form-label mb-1 small">Duration</label>
-                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
-                </div>
+<div class="container dash-wrap">
+    <div class="dash-card">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <img class="doctor-photo" src="<?= htmlspecialchars(!empty($doctor['photo']) ? $doctor['photo'] : 'default.png') ?>" alt="Doctor photo">
+            <div>
+                <h2 class="h4 fw-bold mb-1">Doctor Dashboard</h2>
+                <div class="text-muted"><?= htmlspecialchars($doctor['full_name'] ?? '') ?></div>
             </div>
         </div>
-    </div>
-    <datalist id="medicine-suggest-<?= $row['id'] ?>">
-        <option value="Paracetamol"></option>
-        <option value="Amoxicillin"></option>
-        <option value="Ibuprofen"></option>
-        <option value="Cetirizine"></option>
-        <option value="Azithromycin"></option>
-        <option value="Pantoprazole"></option>
-        <option value="Metformin"></option>
-        <option value="Amlodipine"></option>
-        <option value="Atorvastatin"></option>
-        <option value="Omeprazole"></option>
-    </datalist>
-    <button type="button" class="btn btn-outline-secondary btn-sm mt-1 add-medicine-row" data-target="medicine-container-<?= $row['id'] ?>" data-list="medicine-suggest-<?= $row['id'] ?>">
-        + Add Medicine
-    </button>
-</div>
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Note and Advice</label>
-    <textarea name="note_advice" class="form-control form-control-sm" rows="2" placeholder="Diet, hydration, follow-up advice..."></textarea>
-</div>
-
-<button class="btn btn-dark btn-sm w-100">Save</button>
-</form>
-<?php endif; ?>
-</td>
-</tr>
-<?php endwhile; ?>
-
-</tbody>
-</table>
-</div>
-
-<!-- MOBILE -->
-<div class="d-md-none">
-<?php
-$appointments->data_seek(0);
-while($row = $appointments->fetch_assoc()):
-?>
-<div class="card mb-3">
-<div class="card-body">
-<h6 class="fw-bold"><?= htmlspecialchars($row['patient_name']) ?></h6>
-<p><?= date("d M Y", strtotime($row['appointment_date'])) ?> · <?= date("h:i A", strtotime($row['appointment_time'])) ?></p>
-
-<select class="form-select status-select mb-2" data-id="<?= $row['id'] ?>">
-<?php foreach (['pending','confirmed','completed','cancelled'] as $s): ?>
-<option value="<?= $s ?>" <?= $row['status']===$s?'selected':'' ?>>
-<?= ucfirst($s) ?>
-</option>
-<?php endforeach; ?>
-</select>
-
-<?php if ($row['status']==='confirmed'): ?>
-<a href="video.php?appointment_id=<?= $row['id'] ?>" class="btn btn-primary btn-sm w-100 mb-2">
-Start Call
-</a>
-<?php endif; ?>
-
-<?php if (!empty($row['prescription'])): ?>
-<span class="badge bg-success w-100">Digital Prescription Saved</span>
-<?php else: ?>
-<form action="upload_prescription.php" method="POST">
-<input type="hidden" name="appointment_id" value="<?= $row['id'] ?>">
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Patient Name</label>
-    <input type="text" name="patient_name" class="form-control form-control-sm" value="<?= htmlspecialchars($row['patient_name']) ?>" readonly>
-</div>
-
-<div class="row g-2 mb-2">
-    <div class="col-6">
-        <label class="form-label mb-1 small">Age</label>
-        <input type="number" min="0" max="130" name="age" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($row['patient_age'] ?? '')) ?>">
-    </div>
-    <div class="col-6">
-        <label class="form-label mb-1 small">Gender</label>
-        <?php $gender = strtolower(trim((string)($row['patient_gender'] ?? ''))); ?>
-        <select name="gender" class="form-select form-select-sm">
-            <option value="">Select</option>
-            <option value="male" <?= $gender === 'male' ? 'selected' : '' ?>>Male</option>
-            <option value="female" <?= $gender === 'female' ? 'selected' : '' ?>>Female</option>
-            <option value="other" <?= $gender === 'other' ? 'selected' : '' ?>>Other</option>
-        </select>
-    </div>
-</div>
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Diagnosis</label>
-    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" required></textarea>
-</div>
-
-<div class="mb-2">
-    <label class="form-label mb-1 small">Medicine</label>
-    <div class="medicine-container" id="medicine-mobile-container-<?= $row['id'] ?>">
-        <div class="medicine-row">
-            <div class="row g-2 align-items-end">
-                <div class="col-12">
-                    <label class="form-label mb-1 small">Name</label>
-                    <input list="medicine-mobile-suggest-<?= $row['id'] ?>" name="medicine_name[]" class="form-control form-control-sm" required>
-                </div>
-                <div class="col-6">
-                    <label class="form-label mb-1 small">Dose</label>
-                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
-                </div>
-                <div class="col-6">
-                    <label class="form-label mb-1 small">Duration</label>
-                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <tbody>
+                    <tr>
+                        <th style="width:220px;">Doctor</th>
+                        <td><?= htmlspecialchars($doctor['full_name'] ?? '') ?></td>
+                        <th>Specialization</th>
+                        <td><?= htmlspecialchars($doctor['specialization'] ?? '') ?></td>
+                    </tr>
+                    <tr>
+                        <th>Clinic</th>
+                        <td><?= htmlspecialchars($doctor['clinic'] ?? '') ?></td>
+                        <th>Signature</th>
+                        <td><?= !empty($doctor['signature']) ? 'Uploaded' : 'Not uploaded' ?></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
-    <datalist id="medicine-mobile-suggest-<?= $row['id'] ?>">
-        <option value="Paracetamol"></option>
-        <option value="Amoxicillin"></option>
-        <option value="Ibuprofen"></option>
-        <option value="Cetirizine"></option>
-        <option value="Azithromycin"></option>
-        <option value="Pantoprazole"></option>
-        <option value="Metformin"></option>
-        <option value="Amlodipine"></option>
-        <option value="Atorvastatin"></option>
-        <option value="Omeprazole"></option>
-    </datalist>
-    <button type="button" class="btn btn-outline-secondary btn-sm mt-1 add-medicine-row" data-target="medicine-mobile-container-<?= $row['id'] ?>" data-list="medicine-mobile-suggest-<?= $row['id'] ?>">
-        + Add Medicine
-    </button>
-</div>
 
-<div class="mb-2">
-    <label class="form-label mb-1 small">Note and Advice</label>
-    <textarea name="note_advice" class="form-control form-control-sm" rows="2" placeholder="Diet, hydration, follow-up advice..."></textarea>
-</div>
+    <?php if ($flash_success): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($flash_success) ?></div>
+    <?php endif; ?>
+    <?php if ($flash_error): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($flash_error) ?></div>
+    <?php endif; ?>
 
-<button class="btn btn-dark btn-sm w-100">Save</button>
-</form>
-<?php endif; ?>
+    <div class="dash-card">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h5 fw-bold mb-0">Appointments</h2>
+            <span class="text-muted small">Updates refresh automatically</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Call</th>
+                        <th>Prescription</th>
+                        <th>Remove</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($appointments->num_rows > 0): ?>
+                        <?php while ($row = $appointments->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['patient_name']) ?></td>
+                                <td><?= htmlspecialchars((string) ($row['patient_age'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars((string) ($row['patient_gender'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars(date('d M Y', strtotime($row['appointment_date']))) ?></td>
+                                <td><?= htmlspecialchars(date('h:i A', strtotime($row['appointment_time']))) ?></td>
+                                <td>
+                                    <select class="form-select form-select-sm status-select" data-id="<?= (int) $row['id'] ?>">
+                                        <?php foreach (['pending', 'confirmed', 'completed', 'cancelled'] as $status): ?>
+                                            <option value="<?= $status ?>" <?= $row['status'] === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </td>
+                                <td>
+                                    <?php if ($row['status'] === 'confirmed'): ?>
+                                        <a class="btn btn-sm btn-primary" href="video.php?appointment_id=<?= (int) $row['id'] ?>">Start</a>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php $rx = parse_digital_prescription($row['prescription'] ?? ''); ?>
+                                    <?php if ($rx): ?>
+                                        <span class="badge-status status-completed">Completed</span>
+                                        <a class="btn btn-sm btn-success ms-1 mt-1 mt-md-0" href="prescription.php?appointment_id=<?= (int) $row['id'] ?>">View</a>
+                                    <?php else: ?>
+                                        <a class="btn btn-sm btn-outline-primary" href="add_prescription.php?appointment_id=<?= (int) $row['id'] ?>"><?= !empty($row['prescription']) ? 'Fix' : 'Add' ?></a>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <form method="POST" action="archive_appointment.php" onsubmit="return confirm('Remove this appointment from dashboard?');">
+                                        <input type="hidden" name="appointment_id" value="<?= (int) $row['id'] ?>">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="9" class="text-center text-muted">No appointments found.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-</div>
-<?php endwhile; ?>
-</div>
-
-<?php else: ?>
-<p class="text-muted text-center">No appointments found</p>
-<?php endif; ?>
-
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-$('.status-select').change(function(){
-    const el = $(this);
-    el.prop('disabled', true);
+    document.querySelectorAll('.status-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+            const body = new URLSearchParams({
+                appointment_id: this.dataset.id,
+                status: this.value
+            });
 
-    $.post('update_status.php',{
-        appointment_id: el.data('id'),
-        status: el.val()
-    },()=>el.prop('disabled', false));
-});
+            this.disabled = true;
+            fetch('update_status.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            }).finally(() => {
+                this.disabled = false;
+                window.location.reload();
+            });
+        });
+    });
 
-$(document).on('click', '.add-medicine-row', function(){
-    const containerId = $(this).data('target');
-    const datalistId = $(this).data('list');
-    const container = $('#' + containerId);
-
-    const rowHtml = `
-        <div class="medicine-row">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-4 col-12">
-                    <label class="form-label mb-1 small">Name</label>
-                    <input list="${datalistId}" name="medicine_name[]" class="form-control form-control-sm" required>
-                </div>
-                <div class="col-md-4 col-6">
-                    <label class="form-label mb-1 small">Dose</label>
-                    <input type="text" name="medicine_dose[]" class="form-control form-control-sm" placeholder="1 tablet" required>
-                </div>
-                <div class="col-md-3 col-6">
-                    <label class="form-label mb-1 small">Duration</label>
-                    <input type="text" name="medicine_duration[]" class="form-control form-control-sm" placeholder="5 days" required>
-                </div>
-                <div class="col-md-1 col-12">
-                    <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-medicine-row">×</button>
-                </div>
-            </div>
-        </div>`;
-
-    container.append(rowHtml);
-});
-
-$(document).on('click', '.remove-medicine-row', function(){
-    $(this).closest('.medicine-row').remove();
-});
+    setTimeout(function () {
+        if (document.visibilityState === 'visible') {
+            window.location.reload();
+        }
+    }, 15000);
 </script>
-
 </body>
 </html>
