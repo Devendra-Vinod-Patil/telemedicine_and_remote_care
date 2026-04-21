@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-$current_page = basename($_SERVER['PHP_SELF'] ?? '');
+$current_page = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
 $company_brand = 'Virtual-Chikitsa';
 $page_title = $page_title ?? $company_brand;
 $full_title = ($page_title === $company_brand) ? $company_brand : ($page_title . ' - ' . $company_brand);
@@ -324,6 +324,11 @@ $full_title = ($page_title === $company_brand) ? $company_brand : ($page_title .
                     <li class="nav-item">
                         <a class="nav-link <?= $current_page === 'contact.php' ? 'active' : '' ?>" href="contact.php">
                             <i class="fas fa-envelope me-1"></i>Contact
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $current_page === 'chatbot/index.php' ? 'active' : '' ?>" href="/chatbot/index.php">
+                            <i class="fas fa-robot me-1"></i>Chatbot
                         </a>
                     </li>
                     <?php if (isset($_SESSION['user_id']) && isset($_SESSION['role'])): ?>
