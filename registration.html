@@ -137,8 +137,22 @@
             <input class="form-control" type="tel" name="phone">
           </div>
           <div class="col-md-6">
+            <label class="form-label">Address</label>
+            <input class="form-control" type="text" name="address" placeholder="House no, street, city, state, pincode (optional)">
+          </div>
+          <div class="col-md-6">
             <label class="form-label">Password</label>
-            <input class="form-control" type="password" name="password" required>
+            <input class="form-control" type="password" id="password" name="password" required
+                   minlength="8"
+                   pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}"
+                   placeholder="Min 8 chars, Aa1@">
+            <div class="form-text">
+              Must include uppercase, lowercase, number, and special character.
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Confirm Password</label>
+            <input class="form-control" type="password" id="confirmPassword" name="confirm_password" required placeholder="Re-enter password">
           </div>
         </div>
       </div>
@@ -210,6 +224,25 @@
 
     roleField.addEventListener('change', toggleRoleSections);
     toggleRoleSections();
+
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+
+    function validatePasswordMatch() {
+      if (!password || !confirmPassword) return;
+      if (confirmPassword.value && password.value !== confirmPassword.value) {
+        confirmPassword.setCustomValidity('Passwords do not match.');
+      } else {
+        confirmPassword.setCustomValidity('');
+      }
+    }
+
+    password?.addEventListener('input', validatePasswordMatch);
+    confirmPassword?.addEventListener('input', validatePasswordMatch);
+    form?.addEventListener('submit', function () {
+      validatePasswordMatch();
+    });
   </script>
 </body>
 </html>

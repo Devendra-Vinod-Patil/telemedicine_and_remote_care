@@ -64,6 +64,7 @@ $person_name = $role === 'doctor' ? 'd.full_name AS doctor_name, p.full_name AS 
 
 $stmt = $conn->prepare(
     "SELECT a.id, a.appointment_date, a.appointment_time, a.status, a.prescription,
+            COALESCE(a.payment_status, 'unpaid') AS payment_status, a.payment_amount,
             {$person_name}
      FROM appointments a
      JOIN doctors d ON a.doctor_id = d.id
@@ -78,6 +79,28 @@ $stmt->close();
 
 if (!$appointment) {
     die('Prescription not found.');
+}
+
+// Patients must pay before downloading/viewing prescription
+if ($role === 'patient' && (($appointment['payment_status'] ?? 'unpaid') !== 'paid')) {
+    include 'header.php';
+    ?>
+    <div class="container py-5">
+        <div class="alert alert-warning">
+            Payment is required to download the prescription.
+            <?php if (!empty($appointment['payment_amount'])): ?>
+                Amount: <strong>₹<?= number_format((float)$appointment['payment_amount'], 2) ?></strong>
+            <?php else: ?>
+                Amount: <strong>₹<?= number_format((float)250, 2) ?></strong>
+            <?php endif; ?>
+        </div>
+        <a class="btn btn-warning" href="appointment_payment.php?appointment_id=<?= (int)$appointment_id ?>">Pay Now</a>
+        <a class="btn btn-outline-primary ms-2" href="patient_dashboard.php">Back</a>
+    </div>
+    </body>
+    </html>
+    <?php
+    exit();
 }
 
 $prescription = parse_digital_prescription($appointment['prescription'] ?? '');

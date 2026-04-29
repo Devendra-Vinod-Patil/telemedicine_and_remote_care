@@ -5,6 +5,14 @@ if (session_status() === PHP_SESSION_NONE) {
 
 include 'database.php';
 
+$next = trim((string)($_GET['next'] ?? ($_POST['next'] ?? '')));
+if ($next !== '') {
+    $next = basename($next);
+    if (!preg_match('/^[a-zA-Z0-9._-]+\\.php$/', $next)) {
+        $next = '';
+    }
+}
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -34,7 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $user_data['email'] ?? '';
                 $_SESSION['photo'] = $user_data['photo'] ?? 'default.png';
 
-                header('Location: ' . ($role === 'doctor' ? 'doctors_dashboard.php' : 'patient_dashboard.php'));
+                if ($next !== '') {
+                    header('Location: ' . $next);
+                } else {
+                    header('Location: ' . ($role === 'doctor' ? 'doctors_dashboard.php' : 'patient_dashboard.php'));
+                }
                 exit();
             }
 
@@ -145,6 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST">
+      <?php if ($next !== ''): ?>
+        <input type="hidden" name="next" value="<?= htmlspecialchars($next) ?>">
+      <?php endif; ?>
       <div class="mb-3">
         <label class="form-label" for="role">Role</label>
         <select class="form-select" id="role" name="role" required>

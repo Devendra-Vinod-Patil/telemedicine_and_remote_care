@@ -53,6 +53,10 @@ $flash_error = $_SESSION['flash_error'] ?? '';
 unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 
 ensure_column($conn, 'appointments', 'doctor_hidden', 'TINYINT(1) NOT NULL DEFAULT 0');
+ensure_column($conn, 'appointments', 'payment_status', "VARCHAR(20) NOT NULL DEFAULT 'unpaid'");
+ensure_column($conn, 'appointments', 'payment_id', "VARCHAR(100) NULL");
+ensure_column($conn, 'appointments', 'payment_amount', "DECIMAL(10,2) NULL");
+ensure_column($conn, 'appointments', 'paid_at', "TIMESTAMP NULL DEFAULT NULL");
 
 $doctor_columns = get_columns($conn, 'doctors');
 $patient_columns = get_columns($conn, 'patients');
@@ -70,6 +74,7 @@ $stmt->close();
 
 $stmt = $conn->prepare(
     "SELECT a.id, a.appointment_date, a.appointment_time, a.status, a.prescription,
+            COALESCE(a.payment_status, 'unpaid') AS payment_status, a.payment_amount,
             p.full_name AS patient_name, {$age_select}, {$gender_select}
      FROM appointments a
      JOIN patients p ON a.patient_id = p.id
@@ -79,6 +84,22 @@ $stmt = $conn->prepare(
 $stmt->bind_param('i', $doctor_id);
 $stmt->execute();
 $appointments = $stmt->get_result();
+$stmt->close();
+
+// Medicine orders (store) for this logged-in doctor account (if they also buy)
+ensure_column($conn, 'orders', 'user_id', 'INT NULL AFTER `id`');
+ensure_column($conn, 'orders', 'user_role', "VARCHAR(20) NULL AFTER `user_id`");
+
+$stmt = $conn->prepare(
+    "SELECT id, amount, status, created_at
+     FROM orders
+     WHERE user_id = ? AND user_role = 'doctor'
+     ORDER BY created_at DESC
+     LIMIT 50"
+);
+$stmt->bind_param('i', $doctor_id);
+$stmt->execute();
+$store_orders = $stmt->get_result();
 $stmt->close();
 
 include 'header.php';
@@ -161,6 +182,7 @@ include 'header.php';
                         <th>Date</th>
                         <th>Time</th>
                         <th>Status</th>
+                        <th>Payment</th>
                         <th>Call</th>
                         <th>Prescription</th>
                         <th>Remove</th>
@@ -181,6 +203,19 @@ include 'header.php';
                                             <option value="<?= $status ?>" <?= $row['status'] === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
                                         <?php endforeach; ?>
                                     </select>
+                                </td>
+                                <td>
+                                    <?php if (($row['payment_status'] ?? 'unpaid') === 'paid'): ?>
+                                        <span class="badge bg-success">Paid</span>
+                                        <?php if (!empty($row['payment_amount'])): ?>
+                                            <div class="text-muted small">₹<?= number_format((float)$row['payment_amount'], 2) ?></div>
+                                        <?php endif; ?>
+                                        <div class="mt-1">
+                                            <a class="btn btn-sm btn-outline-primary" href="appointment_bill.php?appointment_id=<?= (int)$row['id'] ?>">Bill</a>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark">Unpaid</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($row['status'] === 'confirmed'): ?>
@@ -207,7 +242,42 @@ include 'header.php';
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="9" class="text-center text-muted">No appointments found.</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted">No appointments found.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+            <h2 class="h5 fw-bold mb-0">Medicine Orders</h2>
+            <a class="btn btn-sm btn-outline-primary" href="storeindex.php">Buy Medicine</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                        <th>Bill</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (isset($store_orders) && $store_orders && $store_orders->num_rows > 0): ?>
+                        <?php while ($o = $store_orders->fetch_assoc()): ?>
+                            <tr>
+                                <td>#<?= (int) $o['id'] ?></td>
+                                <td><?= htmlspecialchars(date('d M Y, h:i A', strtotime((string) $o['created_at']))) ?></td>
+                                <td><?= htmlspecialchars((string) $o['status']) ?></td>
+                                <td class="text-end fw-bold">₹<?= number_format((float) $o['amount'], 2) ?></td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="bill.php?order_id=<?= (int) $o['id'] ?>">Download</a></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" class="text-center text-muted">No medicine orders yet.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

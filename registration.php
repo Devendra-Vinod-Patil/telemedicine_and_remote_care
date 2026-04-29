@@ -54,10 +54,24 @@ $role = $_POST['role'] ?? '';
 $full_name = normalize_text($_POST['fullName'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $phone = normalize_text($_POST['phone'] ?? '');
+$address = normalize_text($_POST['address'] ?? '');
 $password_raw = $_POST['password'] ?? '';
+$confirm_password = $_POST['confirm_password'] ?? '';
 
 if (!in_array($role, ['patient', 'doctor'], true) || $full_name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $password_raw === '') {
     echo "<script>alert('Please fill all required fields correctly.'); window.history.back();</script>";
+    exit();
+}
+
+if (!is_string($confirm_password) || $confirm_password === '' || $password_raw !== $confirm_password) {
+    echo "<script>alert('Passwords do not match.'); window.history.back();</script>";
+    exit();
+}
+
+// Password rules: min 8 chars, includes uppercase, lowercase, number, special character
+$password_pattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$/';
+if (!preg_match($password_pattern, (string) $password_raw)) {
+    echo "<script>alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.'); window.history.back();</script>";
     exit();
 }
 
@@ -67,6 +81,7 @@ try {
     if ($role === 'patient') {
         ensure_column($conn, 'patients', 'age', 'INT NULL AFTER `phone`');
         ensure_column($conn, 'patients', 'gender', "VARCHAR(20) NULL AFTER `age`");
+        ensure_column($conn, 'patients', 'address', "TEXT NULL AFTER `phone`");
 
         $age = isset($_POST['age']) && $_POST['age'] !== '' ? (int) $_POST['age'] : null;
         $gender = strtolower(trim($_POST['gender'] ?? ''));
@@ -76,11 +91,12 @@ try {
             throw new RuntimeException('Please enter a valid age and gender.');
         }
 
-        $sql = 'INSERT INTO patients (full_name, email, phone, age, gender, password) VALUES (?, ?, ?, ?, ?, ?)';
+        $sql = 'INSERT INTO patients (full_name, email, phone, address, age, gender, password) VALUES (?, ?, ?, ?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sssiss', $full_name, $email, $phone, $age, $gender, $password);
+        $stmt->bind_param('ssssiss', $full_name, $email, $phone, $address, $age, $gender, $password);
     } else {
         ensure_column($conn, 'doctors', 'signature', "VARCHAR(255) NULL AFTER `photo`");
+        ensure_column($conn, 'doctors', 'address', "TEXT NULL AFTER `phone`");
 
         $specialization = normalize_text($_POST['specialization'] ?? '');
         $experience = isset($_POST['experience']) && $_POST['experience'] !== '' ? (int) $_POST['experience'] : 0;
@@ -93,9 +109,9 @@ try {
         $photo = upload_image('photo', 'uploads');
         $signature = upload_image('signature', 'uploads/signatures');
 
-        $sql = 'INSERT INTO doctors (full_name, email, phone, password, specialization, experience, clinic, photo, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        $sql = 'INSERT INTO doctors (full_name, email, phone, address, password, specialization, experience, clinic, photo, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sssssisss', $full_name, $email, $phone, $password, $specialization, $experience, $clinic, $photo, $signature);
+        $stmt->bind_param('ssssssisss', $full_name, $email, $phone, $address, $password, $specialization, $experience, $clinic, $photo, $signature);
     }
 
     if (!$stmt) {

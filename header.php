@@ -317,6 +317,15 @@ $full_title = ($page_title === $company_brand) ? $company_brand : ($page_title .
                         </a>
                     </li>
                     <li class="nav-item">
+                        <?php
+                        $store_pages = ['storeindex.php', 'cart.php', 'delivery_form.php', 'save_delivery.php', 'add_to_cart.php', 'remove_from_cart.php', 'clear_cart.php'];
+                        $store_active = in_array($current_page, $store_pages, true);
+                        ?>
+                        <a class="nav-link <?= $store_active ? 'active' : '' ?>" href="storeindex.php">
+                            <i class="fas fa-prescription-bottle-medical me-1"></i>Buy Medicine
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?= $current_page === 'about.php' ? 'active' : '' ?>" href="about.php">
                             <i class="fas fa-circle-info me-1"></i>About
                         </a>

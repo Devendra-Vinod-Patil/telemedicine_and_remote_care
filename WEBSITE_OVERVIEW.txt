@@ -1,0 +1,307 @@
+Virtual-Chikitsa (telemed2) — Website Overview
+================================================
+
+Project root (XAMPP):
+  C:\xampp\htdocs\telemed2
+
+Purpose
+-------
+This is a PHP + MySQL (MariaDB) telemedicine website with:
+1) Doctor/Patient authentication and dashboards
+2) Appointment booking + video meeting link
+3) Digital prescription creation + download/print
+4) Consultation payment via Razorpay (₹250 fixed) and prescription access gating
+5) Pharmacy store (Buy Medicine) with cart/checkout + bill download
+
+
+1) Roles & Login
+--------------
+Roles:
+  - patient
+  - doctor
+
+Session fields used:
+  - $_SESSION['user_id']
+  - $_SESSION['role']           ('patient' or 'doctor')
+  - $_SESSION['full_name']
+  - $_SESSION['email']
+  - $_SESSION['photo']
+  - $_SESSION['cart']           (store cart array: product_id => qty)
+
+Login:
+  - login.php
+    - Supports role-based login (doctor/patient)
+    - On success sets session variables
+    - Supports redirect back using ?next=somepage.php
+
+Logout:
+  - logout.php
+
+Registration:
+  - registration.html (UI)
+    - Includes: role, name, email, phone, address, password, confirm password
+    - Password rules:
+      - min 8 characters
+      - must include: uppercase + lowercase + number + special char
+  - registration.php (server-side)
+    - Inserts into patients or doctors
+    - Ensures columns exist (age/gender for patient, signature for doctor, address for both)
+    - Validates password rules and confirm_password match
+
+
+2) Core Modules
+--------------
+
+2.1 Home / Marketing Pages
+  - index.php          (home)
+  - about.php
+  - contact.php
+  - doctors.php        (doctor listings / browsing)
+  - header.php / footer.php
+
+2.2 Patient Dashboard
+  - patient_dashboard.php
+    Sections:
+      A) Patient profile details (name/email/phone/age/gender)
+      B) Book appointment form
+      C) Appointments table
+      D) Medicine Orders table (store orders)
+
+    Appointment table behavior:
+      - Join button shows when status = confirmed
+      - Prescription:
+        - Only downloadable when:
+          - status = completed
+          - prescription exists
+          - payment_status = paid (consultation payment)
+      - Payment column:
+        - Shows Pay button when status = completed and not paid
+        - Shows Paid badge + amount + Bill link when paid
+
+2.3 Doctor Dashboard
+  - doctors_dashboard.php
+    Sections:
+      A) Doctor profile details
+      B) Appointments table
+      C) Medicine Orders table (store orders for doctor account, if any)
+
+    Appointments behavior:
+      - Doctor can update appointment status (pending/confirmed/completed/cancelled)
+      - Doctor can open video call when status = confirmed
+      - Doctor can add/fix prescription using add_prescription.php
+      - Payment column shows Paid/Unpaid state + Bill link when paid
+
+2.4 Appointment Status Update
+  - update_status.php
+    - Receives POST to update appointment status (used by doctor dashboard)
+
+2.5 Video Consultation
+  - video.php
+    - Used for joining/starting a consultation room
+    - appointment_id passed in query string
+
+2.6 Prescription Module
+  - add_prescription.php
+    - Doctor fills prescription (digital format saved to appointments.prescription)
+  - prescription.php
+    - Shows a printable prescription view for doctor/patient
+    - IMPORTANT: For patients, prescription is blocked unless payment_status = 'paid'
+      (redirects user to appointment_payment.php)
+
+2.7 Appointment Archive / Remove
+  - archive_appointment.php
+    - Lets patient/doctor hide/remove appointment from dashboard (uses hidden flags)
+
+
+3) Payments (Razorpay) & Bills
+------------------------------
+
+3.1 Razorpay Keys (shared configuration)
+  - store_config.php
+    - RAZORPAY_KEY_ID
+    - RAZORPAY_KEY_SECRET
+
+3.2 Fixed Consultation Fee
+  - appointment_config.php
+    - CONSULTATION_FEE_INR = 250
+
+3.3 Consultation Payment Flow (Prescription unlock)
+  - appointment_payment.php
+    - Patient-only page
+    - Allowed only after appointment status = completed
+    - Starts Razorpay payment for ₹250
+  - appointment_pay.php
+    - Patient-only handler
+    - Marks appointment payment fields:
+      - payment_status = paid
+      - payment_id
+      - payment_amount = 250
+      - paid_at
+
+3.4 Consultation Bill Download
+  - appointment_bill.php
+    - Printable invoice for consultation payment
+    - Accessible to doctor or patient only for their own appointment
+    - Only available when payment_status = paid
+
+3.5 Pharmacy Store Bill Download
+  - bill.php
+    - Printable invoice for medicine order
+    - Accessible only to the logged-in user who placed the order
+
+
+4) Pharmacy Store (Buy Medicine)
+--------------------------------
+Store entry point:
+  - storeindex.php
+
+Store access control:
+  - store_auth.php
+    - store_require_login()
+    - Blocks store pages unless logged-in
+    - Shows popup alert then redirects to login.php?next=...
+
+Store pages:
+  - storeindex.php       (product listing)
+  - add_to_cart.php      (adds product to session cart)
+  - cart.php             (cart view)
+  - remove_from_cart.php (remove item)
+  - clear_cart.php       (clear cart)
+  - delivery_form.php    (prefills name/phone/address from logged-in user profile)
+  - save_delivery.php    (creates order + order_items, clears cart, shows bill link)
+  - store_seed_products.php (optional seed script for sample products)
+  - store_schema.sql     (store tables only)
+
+Assets:
+  - assets\store\images\  (product images)
+
+
+5) Database (MySQL/MariaDB)
+---------------------------
+Database connection file:
+  - database.php
+    - Defines $conn (mysqli)
+    - Default db name used: medi
+
+Main tables:
+
+5.1 doctors
+  - id (PK)
+  - full_name, email (unique), phone, address
+  - password (bcrypt hash)
+  - specialization, experience, clinic
+  - photo, signature
+  - created_at
+
+5.2 patients
+  - id (PK)
+  - full_name, email (unique), phone, address
+  - age, gender
+  - photo
+  - password (bcrypt hash)
+  - created_at
+
+5.3 appointments
+  - id (PK)
+  - doctor_id (FK -> doctors.id)
+  - patient_id (FK -> patients.id)
+  - appointment_date, appointment_time
+  - status (pending/confirmed/completed/cancelled)
+  - room_id
+  - prescription (digital JSON or file path)
+  - patient_hidden, doctor_hidden
+  - payment_status ('unpaid'/'paid')
+  - payment_id
+  - payment_amount
+  - paid_at
+
+5.4 products (pharmacy store)
+  - id (PK)
+  - name
+  - price
+  - image (path)
+
+5.5 orders (pharmacy store)
+  - id (PK)
+  - user_id
+  - user_role ('patient'/'doctor')
+  - name, address, phone, details
+  - payment_id (Razorpay payment id, if online pay)
+  - amount
+  - created_at
+  - status
+
+5.6 order_items (pharmacy store)
+  - id (PK)
+  - order_id (FK -> orders.id)
+  - product_id
+  - product_name
+  - quantity
+  - price
+  - subtotal
+  - user_name
+  - created_at
+
+Other tables:
+  - contacts
+  - site_info
+
+SQL export for hosting:
+  - telemed2_hosting.sql
+    - Creates all required tables including store + payment fields
+
+
+6) Architecture & Request Flow (High-Level)
+-------------------------------------------
+
+6.1 Authentication gate
+  - login.php sets session
+  - dashboards check role and session
+  - store pages additionally use store_auth.php
+
+6.2 Appointment life cycle
+  1) Patient books appointment in patient_dashboard.php (status=pending)
+  2) Doctor updates status (confirmed/completed/cancelled) in doctors_dashboard.php
+  3) Video call allowed when status=confirmed
+  4) Doctor adds prescription in add_prescription.php (stored in appointments.prescription)
+  5) Patient pays consultation fee (₹250) after completion (appointment_payment.php)
+  6) After payment_status=paid, patient can open prescription.php and download/print
+  7) Both can download consultation bill from appointment_bill.php (after paid)
+
+6.3 Store order life cycle
+  1) User logs in
+  2) storeindex.php lists products
+  3) add_to_cart.php adds to $_SESSION['cart']
+  4) cart.php shows totals
+  5) delivery_form.php prefills user profile info; user confirms address/phone
+  6) save_delivery.php creates orders + order_items, clears cart
+  7) bill.php provides printable order invoice
+  8) Orders appear in dashboards under Medicine Orders
+
+
+7) Hosting Notes
+----------------
+To host on shared hosting (cPanel/Hostinger/etc.):
+  1) Upload all files in C:\xampp\htdocs\telemed2 to public_html (or a subfolder)
+  2) Create MySQL database and user on hosting
+  3) Import telemed2_hosting.sql into that database
+  4) Update database.php with hosting credentials
+  5) Ensure uploads/ folder exists and is writable
+
+
+8) Important Config Files
+-------------------------
+  - database.php                (DB credentials)
+  - store_config.php            (Razorpay keys)
+  - appointment_config.php      (consultation fee = 250)
+  - store_auth.php              (store login requirement)
+
+
+9) Screenshot Automation (Optional)
+-----------------------------------
+If you want automated screenshots using Playwright:
+  - tools\playwright_screenshots.py or screenshot_all.py (if you created it)
+  - tools\playwright-screenshots.mjs (Node script)
+
+End of document.
+
