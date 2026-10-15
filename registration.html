@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registration - Virtual-Chikitsa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d8e1ea;
+      --text: #102033;
+      --muted: #607284;
+      --brand: #0b4f67;
+      --brand-2: #0f766e;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(180deg, #f8fbfd 0%, var(--bg) 100%);
+      font-family: 'Manrope', sans-serif;
+      color: var(--text);
+    }
+
+    .register-card {
+      width: 100%;
+      max-width: 760px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+      padding: 28px;
+    }
+
+    .register-card h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .register-card p {
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+
+    .form-label {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select {
+      min-height: 50px;
+      border-radius: 14px;
+      border-color: var(--line);
+    }
+
+    .section-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+      background: #fbfdff;
+    }
+
+    .section-box h2 {
+      font-size: 1rem;
+      margin-bottom: 16px;
+      font-weight: 800;
+    }
+
+    .btn-register {
+      width: 100%;
+      min-height: 50px;
+      border: none;
+      border-radius: 14px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    }
+
+    .auth-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      font-size: .95rem;
+    }
+
+    .auth-links a {
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .doctor-fields,
+    .patient-fields {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="register-card">
+    <h1>Registration</h1>
+    <p>Fill the form to create an account.</p>
+
+    <form id="registerForm" action="registration.php" method="POST" enctype="multipart/form-data">
+      <div class="section-box">
+        <h2>Account</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="role">Role</label>
+            <select class="form-select" id="role" name="role" required>
+              <option value="">Select role</option>
+              <option value="patient">Patient</option>
+              <option value="doctor">Doctor</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Full Name</label>
+            <input class="form-control" type="text" name="fullName" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input class="form-control" type="email" name="email" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            <input class="form-control" type="tel" name="phone">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Address</label>
+            <input class="form-control" type="text" name="address" placeholder="House no, street, city, state, pincode (optional)">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" id="password" name="password" required autocomplete="new-password"
+                   minlength="8" maxlength="8" inputmode="numeric"
+                   pattern="[0-9]{8}"
+                   placeholder="8 digit number">
+            <div class="form-text">
+              Password must be exactly 8 digits (numbers only).
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="suggestPasswordBtn">Suggest password</button>
+              <div class="form-check ms-1">
+                <input class="form-check-input" type="checkbox" value="" id="showPasswordsToggle">
+                <label class="form-check-label" for="showPasswordsToggle">Show passwords</label>
+              </div>
+            </div>
+            <div id="passwordSuggestions" class="mt-2 d-none"></div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Confirm Password</label>
+            <input class="form-control" type="password" id="confirmPassword" name="confirm_password" required autocomplete="new-password" inputmode="numeric" placeholder="Re-enter 8 digit password">
+          </div>
+        </div>
+      </div>
+
+      <div id="patientFields" class="section-box patient-fields">
+        <h2>Patient Information</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Age</label>
+            <input class="form-control" type="number" name="age" min="0" max="130">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Gender</label>
+            <select class="form-select" name="gender">
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="doctorFields" class="section-box doctor-fields">
+        <h2>Doctor Information</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Specialization</label>
+            <input class="form-control" type="text" name="specialization">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Experience</label>
+            <input class="form-control" type="number" name="experience" min="0">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Clinic / Hospital</label>
+            <input class="form-control" type="text" name="clinic">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Profile Photo</label>
+            <input class="form-control" type="file" name="photo" accept="image/*">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Signature</label>
+            <input class="form-control" type="file" name="signature" accept="image/*">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-register" type="submit">Create Account</button>
+    </form>
+
+    <div class="auth-links">
+      <a href="login.php">Login</a>
+      <a href="index.php">Back</a>
+    </div>
+  </div>
+
+  <script>
+    const roleField = document.getElementById('role');
+    const doctorFields = document.getElementById('doctorFields');
+    const patientFields = document.getElementById('patientFields');
+    const specializationField = document.querySelector('input[name="specialization"]');
+    const clinicField = document.querySelector('input[name="clinic"]');
+
+    function toggleRoleSections() {
+      const role = roleField.value;
+      doctorFields.style.display = role === 'doctor' ? 'block' : 'none';
+      patientFields.style.display = role === 'patient' ? 'block' : 'none';
+
+      if (specializationField) specializationField.required = role === 'doctor';
+      if (clinicField) clinicField.required = role === 'doctor';
+    }
+
+    roleField.addEventListener('change', toggleRoleSections);
+    toggleRoleSections();
+
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const showPasswordsToggle = document.getElementById('showPasswordsToggle');
+    const suggestPasswordBtn = document.getElementById('suggestPasswordBtn');
+    const passwordSuggestions = document.getElementById('passwordSuggestions');
+
+    function randomInt(maxExclusive) {
+      return Math.floor(Math.random() * maxExclusive);
+    }
+
+    function pickFrom(str) {
+      return str[randomInt(str.length)];
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function generateStrongPassword(length = 14) {
+      const digits = '0123456789';
+      const chars = [];
+      while (chars.length < 8) chars.push(pickFrom(digits));
+      return chars.join('');
+    }
+
+    function setPasswordValues(value) {
+      if (!password || !confirmPassword) return;
+      password.value = value;
+      confirmPassword.value = value;
+      validatePasswordMatch();
+      password.dispatchEvent(new Event('input', { bubbles: true }));
+      confirmPassword.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function renderPasswordSuggestions() {
+      if (!passwordSuggestions) return;
+      const suggestions = [
+        generateStrongPassword(),
+        generateStrongPassword(),
+        generateStrongPassword(),
+      ];
+
+      passwordSuggestions.classList.remove('d-none');
+      passwordSuggestions.innerHTML = `
+        <div class="form-text mb-2">Suggestions (click to use):</div>
+        <div class="d-flex flex-wrap gap-2">
+          ${suggestions
+            .map((s) => `<button type="button" class="btn btn-sm btn-outline-secondary" data-suggest="${s}">${s}</button>`)
+            .join('')}
+        </div>
+      `;
+
+      passwordSuggestions.querySelectorAll('button[data-suggest]').forEach((btn) => {
+        btn.addEventListener('click', () => setPasswordValues(btn.getAttribute('data-suggest')));
+      });
+    }
+
+    function validatePasswordMatch() {
+      if (!password || !confirmPassword) return;
+      if (confirmPassword.value && password.value !== confirmPassword.value) {
+        confirmPassword.setCustomValidity('Passwords do not match.');
+      } else {
+        confirmPassword.setCustomValidity('');
+      }
+    }
+
+    password?.addEventListener('input', validatePasswordMatch);
+    confirmPassword?.addEventListener('input', validatePasswordMatch);
+    form?.addEventListener('submit', function () {
+      validatePasswordMatch();
+    });
+
+    showPasswordsToggle?.addEventListener('change', function () {
+      const nextType = showPasswordsToggle.checked ? 'text' : 'password';
+      if (password) password.type = nextType;
+      if (confirmPassword) confirmPassword.type = nextType;
+    });
+
+    suggestPasswordBtn?.addEventListener('click', function () {
+      setPasswordValues(generateStrongPassword());
+      renderPasswordSuggestions();
+    });
+  </script>
+</body>
+</html>
